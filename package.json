@@ -1,0 +1,65 @@
+{
+    "name": "@ynode/squirrellyify",
+    "version": "1.0.1+410414.v2.0.1-1-g4816d29",
+    "description": "Fastify plugin for rendering Squirrelly templates.",
+    "main": "src/plugin.js",
+    "type": "module",
+    "license": "MIT",
+    "author": "Michael Welter <me@mikinho.com>",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/yammm/ynode-squirrellyify.git"
+    },
+    "bugs": {
+        "url": "https://github.com/yammm/ynode-squirrellyify/issues"
+    },
+    "homepage": "https://github.com/yammm/ynode-squirrellyify#readme",
+    "keywords": [
+        "fastify",
+        "template",
+        "view",
+        "squirrelly"
+    ],
+    "engines": {
+        "node": ">=18"
+    },
+    "devDependencies": {
+        "@eslint/js": "^9.37.0",
+        "@eslint/json": "^0.13.2",
+        "@eslint/markdown": "^7.4.0",
+        "@mikinho/autover": "^2.0.1",
+        "eslint": "^9.37.0",
+        "eslint-config-prettier": "^10.1.8",
+        "eslint-plugin-prettier": "^5.5.4",
+        "globals": "^16.4.0",
+        "prettier": "^3.6.2",
+        "rimraf": "^6.0.1",
+        "yuidocjs": "^0.10.2"
+    },
+    "scripts": {
+        "docs": "node scripts/gen-docs.mjs",
+        "docs:clean": "rimraf docs || rmdir /s /q docs 2> NUL || true",
+        "docs:open": "node -e \"import('node:child_process').then(m=>m.exec(process.platform==='win32'?'start docs/index.html':(process.platform==='darwin'?'open docs/index.html':'xdg-open docs/index.html')))\"",
+        "format": "prettier --write .",
+        "format:check": "prettier --check .",
+        "lint": "eslint .",
+        "lint:fix": "eslint . --fix",
+        "ver:preview": "npx autover --no-amend --dry-run --short",
+        "ver:apply": "npx autover --guard-unchanged --short",
+        "test": "eslint --no-warn-ignored $(git diff --cached --name-only --diff-filter=ACMRTUXB | tr '\\n' ' ')",
+        "prepublishOnly": "npm test || true",
+        "postversion": "git push && git push --tags"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "files": [
+        "src",
+        "README.md",
+        "LICENSE"
+    ],
+    "dependencies": {
+        "fastify-plugin": "^5.1.0",
+        "squirrelly": "^9.1.0"
+    }
+}
