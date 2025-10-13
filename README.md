@@ -3,8 +3,7 @@
 Copyright (c) 2025 Michael Welter <me@mikinho.com>
 
 [![npm version](https://img.shields.io/npm/v/@ynode/squirrellyify.svg)](https://www.npmjs.com/package/@ynode/squirrellyify)
-[![build](https://img.shields.io/github/actions/workflow/status/yammm/ynode-squirrellyify/your-workflow.yml)](https://github.com/yammm/ynode-squirrellyify/actions)
-[![license](https://img.shields.io/npm/l/@ynode/squirrellyify.svg)](https://github.com/yammm/ynode-squirrellyify/blob/main/LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A simple and fast plugin for using the [Squirrelly](https://squirrelly.js.org/) template engine with
 [Fastify](https://www.fastify.io/).
@@ -244,4 +243,4 @@ fastify.register(squirrellyify, {
 
 ## License
 
-[MIT](./LICENSE)
+This project is licensed under the [MIT Lisence](./LICENSE).

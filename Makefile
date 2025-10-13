@@ -10,6 +10,9 @@ docs:
 clean:
 	npm run docs:clean
 
+lint:
+	npm run lint
+
 release: check
 	@if [ -z "$(VERSION)" ]; then echo "VERSION required"; exit 2; fi
 	npm version $(VERSION)

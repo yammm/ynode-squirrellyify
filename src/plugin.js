@@ -271,5 +271,5 @@ async function squirrellyify(fastify, options = {}) {
 
 export default fp(squirrellyify, {
     fastify: "5.x",
-    name: "squirrellyify",
+    name: "@ynode/squirrellyify",
 });
