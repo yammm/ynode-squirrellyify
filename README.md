@@ -3,8 +3,8 @@
 Copyright (c) 2025 Michael Welter <me@mikinho.com>
 
 [![npm version](https://img.shields.io/npm/v/@ynode/squirrellyify.svg)](https://www.npmjs.com/package/@ynode/squirrellyify)
-[![build](https://img.shields.io/github/actions/workflow/status/your-repo/your-workflow.yml)](https://github.com/your-repo/actions)
-[![license](https://img.shields.io/npm/l/@ynode/squirrellyify.svg)](https://github.com/your-repo/blob/main/LICENSE)
+[![build](https://img.shields.io/github/actions/workflow/status/yammm/ynode-squirrellyify/your-workflow.yml)](https://github.com/yammm/ynode-squirrellyify/actions)
+[![license](https://img.shields.io/npm/l/@ynode/squirrellyify.svg)](https://github.com/yammm/ynode-squirrellyify/blob/main/LICENSE)
 
 A simple and fast plugin for using the [Squirrelly](https://squirrelly.js.org/) template engine with
 [Fastify](https://www.fastify.io/).
