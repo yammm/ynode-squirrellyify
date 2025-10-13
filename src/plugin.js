@@ -56,14 +56,14 @@ async function squirrellyify(fastify, options = {}) {
     const initialTemplatesDirs = Array.isArray(options.templates)
         ? options.templates
         : typeof options.templates === "string"
-          ? [options.templates]
-          : [path.join(process.cwd(), "views")];
+            ? [options.templates]
+            : [path.join(process.cwd(), "views")];
 
     const initialPartialsDirs = Array.isArray(options.partials)
         ? options.partials
         : typeof options.partials === "string"
-          ? [options.partials]
-          : [];
+            ? [options.partials]
+            : [];
 
     const initialLayout = options.layout;
     const defaultExtension = options.defaultExtension || "sqrl";

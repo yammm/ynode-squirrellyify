@@ -35,7 +35,7 @@ By default, the plugin looks for templates in a `views` directory in your projec
 
 **File structure:**
 
-```
+```text
 .
 ├── views/
 │   └── index.sqrl
