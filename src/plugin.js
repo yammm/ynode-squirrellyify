@@ -31,6 +31,7 @@ import fp from "fastify-plugin";
 import Sqrl from "squirrelly";
 
 import {
+    validatePluginOptions,
     resolveExtension,
     resolveInitialPartialsDirs,
     resolveInitialTemplateDirs,
@@ -72,6 +73,8 @@ import { assertSafeName } from "./safety.js";
  * @param {Record<string, Function>} [options.sqrl.filters] Custom Squirrelly filters.
  */
 async function squirrellyify(fastify, options = {}) {
+    validatePluginOptions(options);
+
     const initialTemplatesDirs = resolveInitialTemplateDirs(options);
     const initialPartialsDirs = resolveInitialPartialsDirs(options);
     const initialLayout = options.layout;

@@ -85,7 +85,7 @@ You can pass an options object when registering the plugin.
 | `partialsRecursive` | `boolean`           | `true`                              | If `true`, partials are loaded recursively from subdirectories. Names use forward slashes (for example, `emails/header`).           |
 | `partialsNamespace` | `boolean \| string` | `false`                             | Optional namespace prefix for partial names. Use `true` to prefix with each partials directory basename, or provide a custom string. |
 | `layout`           | `string`             | `undefined`                         | The name of the default layout file to use (without extension). Can be overridden per-route.                                         |
-| `defaultExtension` | `string`             | `"sqrl"`                            | The file extension for all template files.                                                                                           |
+| `defaultExtension` | `string`             | `"sqrl"`                            | The file extension for all template files. Leading `.` is optional (for example, `"html"` or `".html"`).                           |
 | `cache`            | `boolean`            | `NODE_ENV === "production"`         | If `true`, compiled templates and resolved file paths will be cached in memory.                                                      |
 | `sqrl`             | `object`             | `undefined`                         | Squirrelly options. Supports `{ scope: "global" \| "scoped", config, helpers, filters }`.                                            |
 
@@ -103,6 +103,8 @@ These APIs are scope-aware:
 
 The cache API is process-local and lets you invalidate compiled template/path caches at runtime when
 `cache: true` is used.
+
+Invalid option types are rejected at plugin registration time with descriptive errors.
 
 ## Advanced Usage
 

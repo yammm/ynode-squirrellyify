@@ -90,6 +90,48 @@ test("allows nested forward-slash template names and blocks traversal", async (t
     assert.match(String(blocked.payload), /Illegal template name/);
 });
 
+test("validates plugin option types with clear registration errors", async () => {
+    await assert.rejects(
+        async () => {
+            const app = createFastifyHarness();
+            await app.register({ partialsRecursive: "yes" });
+        },
+        /Invalid option "partialsRecursive": expected a boolean/,
+    );
+
+    await assert.rejects(
+        async () => {
+            const app = createFastifyHarness();
+            await app.register({ sqrl: { scope: "tenant" } });
+        },
+        /Invalid option "sqrl.scope": expected "global" or "scoped"/,
+    );
+
+    await assert.rejects(
+        async () => {
+            const app = createFastifyHarness();
+            await app.register({ sqrl: { filters: { bad: "not-a-function" } } });
+        },
+        /Invalid option "sqrl.filters.bad": expected a function/,
+    );
+});
+
+test("accepts defaultExtension with a leading dot", async (t) => {
+    const root = await createTempDir(t);
+    const viewsDir = path.join(root, "views");
+    await writeTemplate(viewsDir, "page.html", "<h1>Dot Extension</h1>");
+
+    const app = createFastifyHarness();
+    await app.register({
+        templates: viewsDir,
+        defaultExtension: ".html",
+    });
+
+    const rendered = await app.render("page");
+    assert.equal(rendered.statusCode, 200);
+    assert.equal(rendered.payload, "<h1>Dot Extension</h1>");
+});
+
 test("renders async templates and layouts when sqrl.config.async is enabled", async (t) => {
     const root = await createTempDir(t);
     const viewsDir = path.join(root, "views");
