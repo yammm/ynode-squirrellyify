@@ -112,7 +112,7 @@ async function squirrellyify(fastify, options = {}) {
         sqrlConfig,
     });
 
-    const { findTemplatePath, getTemplate, hasLayoutTag } = createTemplateResolver({
+    const { findTemplatePath, getTemplate, hasLayoutTag, clearCaches, cacheStats } = createTemplateResolver({
         fastify,
         extensionWithDot,
         useCache,
@@ -196,6 +196,10 @@ async function squirrellyify(fastify, options = {}) {
     fastify.decorate("viewHelpers", viewHelpers);
     fastify.decorate("viewFilters", viewFilters);
     fastify.decorate("viewPartials", viewPartials);
+    fastify.decorate("viewCache", {
+        clear: clearCaches,
+        stats: cacheStats,
+    });
 
     // Also expose the Squirrelly engine itself for advanced configuration (e.g., adding helpers/filters)
     fastify.decorate("Sqrl", Sqrl);

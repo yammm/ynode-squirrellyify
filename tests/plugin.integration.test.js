@@ -317,6 +317,45 @@ test("runtime API in scoped mode isolates partials per registration", async (t) 
     assert.equal(appB.instance.viewPartials.get("runtime/card"), undefined);
 });
 
+test("viewCache.clear invalidates cached templates after file changes", async (t) => {
+    const root = await createTempDir(t);
+    const viewsDir = path.join(root, "views");
+    await writeTemplate(viewsDir, "page.sqrl", "<h1>Version A</h1>");
+
+    const app = createFastifyHarness();
+    await app.register({
+        templates: viewsDir,
+        cache: true,
+    });
+
+    const first = await app.render("page");
+    assert.equal(first.statusCode, 200);
+    assert.equal(first.payload, "<h1>Version A</h1>");
+
+    await writeTemplate(viewsDir, "page.sqrl", "<h1>Version B</h1>");
+
+    const cached = await app.render("page");
+    assert.equal(cached.statusCode, 200);
+    assert.equal(cached.payload, "<h1>Version A</h1>");
+    assert.equal(typeof app.instance.viewCache.clear, "function");
+    assert.equal(typeof app.instance.viewCache.stats, "function");
+
+    const before = app.instance.viewCache.stats();
+    assert.equal(before.enabled, true);
+    assert.equal(before.templates > 0, true);
+
+    app.instance.viewCache.clear();
+
+    const after = app.instance.viewCache.stats();
+    assert.equal(after.templates, 0);
+    assert.equal(after.paths, 0);
+    assert.equal(after.metadata, 0);
+
+    const fresh = await app.render("page");
+    assert.equal(fresh.statusCode, 200);
+    assert.equal(fresh.payload, "<h1>Version B</h1>");
+});
+
 test("does not resolve page templates from partial directories", async (t) => {
     const root = await createTempDir(t);
     const viewsDir = path.join(root, "views");

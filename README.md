@@ -94,11 +94,15 @@ Runtime API after registration:
 - `fastify.viewHelpers.define(name, fn)`, `fastify.viewHelpers.get(name)`, `fastify.viewHelpers.remove(name)`
 - `fastify.viewFilters.define(name, fn)`, `fastify.viewFilters.get(name)`, `fastify.viewFilters.remove(name)`
 - `fastify.viewPartials.define(name, templateOrFn)`, `fastify.viewPartials.get(name)`, `fastify.viewPartials.remove(name)`
+- `fastify.viewCache.clear()`, `fastify.viewCache.stats()`
 
 These APIs are scope-aware:
 
 - In `global` mode they modify shared helpers/filters/partials.
 - In `scoped` mode they only affect the current plugin registration scope.
+
+The cache API is process-local and lets you invalidate compiled template/path caches at runtime when
+`cache: true` is used.
 
 ## Advanced Usage
 

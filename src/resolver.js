@@ -198,9 +198,26 @@ export function createTemplateResolver({ fastify, extensionWithDot, useCache, sq
         return templateMeta.get(templatePath)?.hasLayoutTag === true;
     }
 
+    function clearCaches() {
+        templateCache.clear();
+        pathCache.clear();
+        templateMeta.clear();
+    }
+
+    function cacheStats() {
+        return {
+            enabled: useCache,
+            templates: templateCache.size,
+            paths: pathCache.size,
+            metadata: templateMeta.size,
+        };
+    }
+
     return {
         findTemplatePath,
         getTemplate,
         hasLayoutTag,
+        clearCaches,
+        cacheStats,
     };
 }
