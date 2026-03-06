@@ -130,9 +130,20 @@ async function squirrellyify(fastify, options = {}) {
      */
     async function view(template, data = {}) {
         try {
+            const requestData = data && typeof data === "object" ? data : {};
+            const replyContext =
+                this.context && typeof this.context === "object" ? this.context : {};
+            const replyLocals =
+                this.locals && typeof this.locals === "object" ? this.locals : {};
+            const mergedData = {
+                ...replyContext,
+                ...replyLocals,
+                ...requestData,
+            };
+
             assertSafeName(template);
-            if (data.layout && data.layout !== false) {
-                assertSafeName(data.layout);
+            if (mergedData.layout && mergedData.layout !== false) {
+                assertSafeName(mergedData.layout);
             }
 
             const instance = this.request.server;
@@ -151,11 +162,11 @@ async function squirrellyify(fastify, options = {}) {
             }
 
             const pageTemplate = await getTemplate(pagePath);
-            const pageHtml = await pageTemplate(data, sqrlConfig);
+            const pageHtml = await pageTemplate(mergedData, sqrlConfig);
 
             // 2. Determine which layout to use
             const currentLayout = scopedLayout !== null ? scopedLayout : initialLayout;
-            const layoutFile = data.layout === false ? null : data.layout || currentLayout;
+            const layoutFile = mergedData.layout === false ? null : mergedData.layout || currentLayout;
 
             if (!layoutFile) {
                 return this.type("text/html").send(pageHtml);
@@ -174,7 +185,11 @@ async function squirrellyify(fastify, options = {}) {
             }
 
             const layoutTemplate = await getTemplate(layoutPath);
-            const layoutData = { ...data, ...data.layoutData, body: pageHtml };
+            const layoutPayload =
+                mergedData.layoutData && typeof mergedData.layoutData === "object"
+                    ? mergedData.layoutData
+                    : {};
+            const layoutData = { ...mergedData, ...layoutPayload, body: pageHtml };
             const finalHtml = await layoutTemplate(layoutData, sqrlConfig);
 
             return this.type("text/html").send(finalHtml);

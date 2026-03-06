@@ -74,6 +74,28 @@ fastify.listen({ port: 3000 }, (err) => {
 });
 ```
 
+### Request-Scoped View Data
+
+`reply.view(template, data)` automatically merges request-scoped values from `reply.locals` and
+`reply.context` into the template data:
+
+```javascript
+fastify.addHook("preHandler", async (request, reply) => {
+    reply.locals = { appName: "YNode", greeting: "Welcome" };
+});
+
+fastify.get("/", (request, reply) => {
+    // Route-level values win over locals/context on key conflicts.
+    return reply.view("index", { greeting: "Hello" });
+});
+```
+
+Merge precedence is:
+
+1. `reply.context`
+2. `reply.locals`
+3. `reply.view(..., data)` (highest precedence)
+
 ## Configuration Options
 
 You can pass an options object when registering the plugin.

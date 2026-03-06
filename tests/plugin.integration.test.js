@@ -27,7 +27,7 @@ function createFastifyHarness(parent = null) {
         async register(options) {
             await squirrellyify(instance, options);
         },
-        async render(template, data = {}) {
+        async render(template, data = {}, replyOverrides = {}) {
             const reply = {
                 request: { server: instance },
                 statusCode: 200,
@@ -49,6 +49,7 @@ function createFastifyHarness(parent = null) {
                     this.statusCode = code;
                     return this;
                 },
+                ...replyOverrides,
             };
             reply.view = replyDecorators.get("view");
             assert.equal(typeof reply.view, "function");
@@ -130,6 +131,34 @@ test("accepts defaultExtension with a leading dot", async (t) => {
     const rendered = await app.render("page");
     assert.equal(rendered.statusCode, 200);
     assert.equal(rendered.payload, "<h1>Dot Extension</h1>");
+});
+
+test("merges reply context and locals into view data with explicit data precedence", async (t) => {
+    const root = await createTempDir(t);
+    const viewsDir = path.join(root, "views");
+    await writeTemplate(
+        viewsDir,
+        "page.sqrl",
+        "<h1>{{it.name}}</h1><p>{{it.greeting}}</p><p>{{it.title}}</p>",
+    );
+
+    const app = createFastifyHarness();
+    await app.register({ templates: viewsDir });
+
+    const rendered = await app.render(
+        "page",
+        { name: "Route Name" },
+        {
+            context: { title: "Context Title" },
+            locals: { name: "Local Name", greeting: "Hello from locals" },
+        },
+    );
+
+    assert.equal(rendered.statusCode, 200);
+    assert.equal(
+        rendered.payload,
+        "<h1>Route Name</h1><p>Hello from locals</p><p>Context Title</p>",
+    );
 });
 
 test("renders async templates and layouts when sqrl.config.async is enabled", async (t) => {
