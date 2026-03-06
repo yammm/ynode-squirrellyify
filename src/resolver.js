@@ -3,12 +3,58 @@ import path from "node:path";
 
 import Sqrl from "squirrelly";
 
+function trimSlashes(value) {
+    return value.replace(/^\/+|\/+$/g, "");
+}
+
+function resolvePartialsNamespace(partialsNamespace, partialsDir) {
+    if (!partialsNamespace) {
+        return "";
+    }
+    if (partialsNamespace === true) {
+        return trimSlashes(path.basename(path.resolve(partialsDir)));
+    }
+    if (typeof partialsNamespace === "string") {
+        return trimSlashes(partialsNamespace.split("\\").join("/"));
+    }
+    return "";
+}
+
+async function collectPartialFiles(dir, extensionWithDot, recursive) {
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+    const files = [];
+
+    for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+            if (recursive) {
+                files.push(...(await collectPartialFiles(fullPath, extensionWithDot, recursive)));
+            }
+            continue;
+        }
+        if (entry.isFile() && entry.name.endsWith(extensionWithDot)) {
+            files.push(fullPath);
+        }
+    }
+
+    return files;
+}
+
+function resolvePartialName(partialPath, partialsDir, extensionWithDot, namespace) {
+    const relativePath = path.relative(partialsDir, partialPath);
+    const withoutExt = relativePath.slice(0, -extensionWithDot.length);
+    const normalizedName = withoutExt.split(path.sep).join("/");
+    return namespace ? `${namespace}/${normalizedName}` : normalizedName;
+}
+
 /**
  * Preload partial templates and define them in the configured Sqrl template store.
  *
  * @param {object} options
  * @param {string[]} options.partialsDirs
  * @param {string} options.extensionWithDot
+ * @param {boolean} [options.partialsRecursive=true]
+ * @param {boolean|string} [options.partialsNamespace=false]
  * @param {object} options.fastify
  * @param {Function} options.defineSqrlTemplate
  * @param {object} options.sqrlConfig
@@ -17,6 +63,8 @@ import Sqrl from "squirrelly";
 export async function preloadPartials({
     partialsDirs,
     extensionWithDot,
+    partialsRecursive = true,
+    partialsNamespace = false,
     fastify,
     defineSqrlTemplate,
     sqrlConfig,
@@ -27,16 +75,19 @@ export async function preloadPartials({
 
     for (const partialsDir of partialsDirs) {
         try {
-            const files = await fs.readdir(partialsDir);
+            const namespace = resolvePartialsNamespace(partialsNamespace, partialsDir);
+            const files = await collectPartialFiles(partialsDir, extensionWithDot, partialsRecursive);
             await Promise.all(
-                files.map(async (file) => {
-                    if (file.endsWith(extensionWithDot)) {
-                        const partialPath = path.join(partialsDir, file);
-                        const partialName = path.basename(file, extensionWithDot);
-                        const content = await fs.readFile(partialPath, "utf-8");
-                        fastify.log.trace(`Loaded partial: ${partialName}`);
-                        defineSqrlTemplate(partialName, Sqrl.compile(content, sqrlConfig));
-                    }
+                files.map(async (partialPath) => {
+                    const partialName = resolvePartialName(
+                        partialPath,
+                        partialsDir,
+                        extensionWithDot,
+                        namespace,
+                    );
+                    const content = await fs.readFile(partialPath, "utf-8");
+                    fastify.log.trace(`Loaded partial: ${partialName}`);
+                    defineSqrlTemplate(partialName, Sqrl.compile(content, sqrlConfig));
                 }),
             );
         } catch (error) {

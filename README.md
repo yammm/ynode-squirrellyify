@@ -81,7 +81,9 @@ You can pass an options object when registering the plugin.
 | Option             | Type                 | Default                             | Description                                                                                                                          |
 | ------------------ | -------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | `templates`        | `string \| string[]` | `path.join(process.cwd(), "views")` | The directory or directories to search for page and layout templates. Searched in the provided order.                                |
-| `partials`         | `string \| string[]` | `[]`                                | The directory or directories for partial templates. All partials are loaded on startup and available by filename.                     |
+| `partials`         | `string \| string[]` | `[]`                                | The directory or directories for partial templates. All partials are loaded on startup and available by name.                         |
+| `partialsRecursive` | `boolean`           | `true`                              | If `true`, partials are loaded recursively from subdirectories. Names use forward slashes (for example, `emails/header`).           |
+| `partialsNamespace` | `boolean \| string` | `false`                             | Optional namespace prefix for partial names. Use `true` to prefix with each partials directory basename, or provide a custom string. |
 | `layout`           | `string`             | `undefined`                         | The name of the default layout file to use (without extension). Can be overridden per-route.                                         |
 | `defaultExtension` | `string`             | `"sqrl"`                            | The file extension for all template files.                                                                                           |
 | `cache`            | `boolean`            | `NODE_ENV === "production"`         | If `true`, compiled templates and resolved file paths will be cached in memory.                                                      |
@@ -161,7 +163,8 @@ You can specify a layout in three ways (in order of precedence):
 ### Partials
 
 Partials are reusable chunks of template code. Create a `partials` directory and place your files
-there. They will be automatically registered by their filename.
+there. By default, partials are loaded recursively and registered by forward-slash path from the
+partials directory root.
 
 **`partials/user-card.sqrl`**
 
@@ -176,7 +179,7 @@ there. They will be automatically registered by their filename.
 
 ```html
 <h1>Users</h1>
-{{ include('user-card', { name: 'John Doe', email: 'john@example.com' }) /}}
+{{@include('user-card', { name: 'John Doe', email: 'john@example.com' })/}}
 ```
 
 **Register the `partials` directory:**
@@ -186,6 +189,42 @@ fastify.register(squirrellyify, {
     templates: "views",
     partials: "partials",
 });
+```
+
+Nested partials use forward-slash names:
+
+```text
+partials/
+└── cards/
+    └── user-card.sqrl
+```
+
+```html
+{{@include('cards/user-card', { name: 'John Doe', email: 'john@example.com' })/}}
+```
+
+To disable recursive loading:
+
+```javascript
+fastify.register(squirrellyify, {
+    templates: "views",
+    partials: "partials",
+    partialsRecursive: false,
+});
+```
+
+To namespace partial names:
+
+```javascript
+fastify.register(squirrellyify, {
+    templates: "views",
+    partials: "partials",
+    partialsNamespace: "shared",
+});
+```
+
+```html
+{{@include('shared/cards/user-card', { name: 'John Doe', email: 'john@example.com' })/}}
 ```
 
 ### Scoped Configuration (Encapsulation)

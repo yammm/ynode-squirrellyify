@@ -263,3 +263,141 @@ test("does not resolve page templates from partial directories", async (t) => {
     assert.equal(rendered.statusCode, 500);
     assert.match(String(rendered.payload), /Template "page" not found/);
 });
+
+test("loads nested partials recursively using forward-slash names by default", async (t) => {
+    const root = await createTempDir(t);
+    const viewsDir = path.join(root, "views");
+    const partialsDir = path.join(root, "partials");
+
+    await writeTemplate(
+        viewsDir,
+        "page.sqrl",
+        "<article>{{@include('cards/user-card', { name: it.name })/}}</article>",
+    );
+    await writeTemplate(partialsDir, "cards/user-card.sqrl", "<p>{{it.name}}</p>");
+
+    const app = createFastifyHarness();
+    await app.register({
+        templates: viewsDir,
+        partials: partialsDir,
+    });
+
+    const rendered = await app.render("page", { name: "Ana" });
+    assert.equal(rendered.statusCode, 200);
+    assert.equal(rendered.payload, "<article><p>Ana</p></article>");
+});
+
+test("can disable recursive partial loading with partialsRecursive=false", async (t) => {
+    const root = await createTempDir(t);
+    const viewsDir = path.join(root, "views");
+    const partialsDir = path.join(root, "partials");
+
+    await writeTemplate(
+        viewsDir,
+        "page.sqrl",
+        "<article>{{@include('cards/user-card', { name: it.name })/}}</article>",
+    );
+    await writeTemplate(partialsDir, "cards/user-card.sqrl", "<p>{{it.name}}</p>");
+
+    const app = createFastifyHarness();
+    await app.register({
+        templates: viewsDir,
+        partials: partialsDir,
+        partialsRecursive: false,
+        sqrl: { scope: "scoped" },
+    });
+
+    const rendered = await app.render("page", { name: "Ana" });
+    assert.equal(rendered.statusCode, 500);
+    assert.match(String(rendered.payload), /cards\/user-card/);
+});
+
+test("supports partial namespace prefix using the partials directory basename", async (t) => {
+    const root = await createTempDir(t);
+    const viewsDir = path.join(root, "views");
+    const partialsDir = path.join(root, "shared-partials");
+
+    await writeTemplate(
+        viewsDir,
+        "page.sqrl",
+        "<article>{{@include('shared-partials/cards/user-card', { name: it.name })/}}</article>",
+    );
+    await writeTemplate(partialsDir, "cards/user-card.sqrl", "<p>{{it.name}}</p>");
+
+    const app = createFastifyHarness();
+    await app.register({
+        templates: viewsDir,
+        partials: partialsDir,
+        partialsNamespace: true,
+    });
+
+    const rendered = await app.render("page", { name: "Ana" });
+    assert.equal(rendered.statusCode, 200);
+    assert.equal(rendered.payload, "<article><p>Ana</p></article>");
+});
+
+test("global mode shares namespaced partials across registrations", async (t) => {
+    const root = await createTempDir(t);
+    const viewsA = path.join(root, "views-a");
+    const viewsB = path.join(root, "views-b");
+    const partialsA = path.join(root, "partials-a");
+    const partialsB = path.join(root, "partials-b");
+
+    await writeTemplate(viewsA, "page.sqrl", "{{@include('shared-global/widget', { word: it.word })/}}");
+    await writeTemplate(viewsB, "page.sqrl", "{{@include('shared-global/widget', { word: it.word })/}}");
+    await writeTemplate(partialsA, "widget.sqrl", "A:{{it.word}}");
+    await writeTemplate(partialsB, "widget.sqrl", "B:{{it.word}}");
+
+    const appA = createFastifyHarness();
+    await appA.register({
+        templates: viewsA,
+        partials: partialsA,
+        partialsNamespace: "shared-global",
+    });
+
+    const appB = createFastifyHarness();
+    await appB.register({
+        templates: viewsB,
+        partials: partialsB,
+        partialsNamespace: "shared-global",
+    });
+
+    const fromA = await appA.render("page", { word: "one" });
+    const fromB = await appB.render("page", { word: "two" });
+    assert.equal(fromA.payload, "B:one");
+    assert.equal(fromB.payload, "B:two");
+});
+
+test("scoped mode isolates namespaced partials per registration", async (t) => {
+    const root = await createTempDir(t);
+    const viewsA = path.join(root, "views-a");
+    const viewsB = path.join(root, "views-b");
+    const partialsA = path.join(root, "partials-a");
+    const partialsB = path.join(root, "partials-b");
+
+    await writeTemplate(viewsA, "page.sqrl", "{{@include('shared-scoped/widget', { word: it.word })/}}");
+    await writeTemplate(viewsB, "page.sqrl", "{{@include('shared-scoped/widget', { word: it.word })/}}");
+    await writeTemplate(partialsA, "widget.sqrl", "A:{{it.word}}");
+    await writeTemplate(partialsB, "widget.sqrl", "B:{{it.word}}");
+
+    const appA = createFastifyHarness();
+    await appA.register({
+        templates: viewsA,
+        partials: partialsA,
+        partialsNamespace: "shared-scoped",
+        sqrl: { scope: "scoped" },
+    });
+
+    const appB = createFastifyHarness();
+    await appB.register({
+        templates: viewsB,
+        partials: partialsB,
+        partialsNamespace: "shared-scoped",
+        sqrl: { scope: "scoped" },
+    });
+
+    const fromA = await appA.render("page", { word: "one" });
+    const fromB = await appB.render("page", { word: "two" });
+    assert.equal(fromA.payload, "A:one");
+    assert.equal(fromB.payload, "B:two");
+});

@@ -60,6 +60,8 @@ import { assertSafeName } from "./safety.js";
  * @param {object} options Plugin options.
  * @param {string|string[]} [options.templates] The directory or directories where page and layout templates are stored. Defaults to "views". Directories are searched in order.
  * @param {string|string[]} [options.partials] The directory or directories where partial templates are stored.
+ * @param {boolean} [options.partialsRecursive=true] Enables recursive loading of partial templates from subdirectories.
+ * @param {boolean|string} [options.partialsNamespace=false] Optional namespace prefix for partial names. Use `true` to namespace by partials directory basename.
  * @param {string} [options.layout] The name of the default layout file to use (without extension).
  * @param {string} [options.defaultExtension="sqrl"] The default extension for template files.
  * @param {boolean} [options.cache] Enables template caching. Defaults to true if NODE_ENV is "production".
@@ -96,6 +98,8 @@ async function squirrellyify(fastify, options = {}) {
     await preloadPartials({
         partialsDirs: initialPartialsDirs,
         extensionWithDot,
+        partialsRecursive: options.partialsRecursive ?? true,
+        partialsNamespace: options.partialsNamespace ?? false,
         fastify,
         defineSqrlTemplate,
         sqrlConfig,
