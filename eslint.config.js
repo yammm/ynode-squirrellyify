@@ -51,7 +51,7 @@ export default defineConfig([
             "no-implicit-coercion": ["warn", { allow: ["!!"] }],
             "no-console": ["warn", { allow: ["log", "warn", "error"] }],
             // "array-bracket-spacing": ["error", "always"], // conflicts with prettier
-            indent: ["error", 4, { SwitchCase: 1 }],
+            // indent: ["error", 4, { SwitchCase: 1 }], // conflicts with prettier
             semi: ["error", "always"],
             curly: ["error", "all"],
             "brace-style": ["error", "1tbs", { allowSingleLine: false }],

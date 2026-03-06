@@ -56,14 +56,14 @@ async function squirrellyify(fastify, options = {}) {
     const initialTemplatesDirs = Array.isArray(options.templates)
         ? options.templates
         : typeof options.templates === "string"
-            ? [options.templates]
-            : [path.join(process.cwd(), "views")];
+          ? [options.templates]
+          : [path.join(process.cwd(), "views")];
 
     const initialPartialsDirs = Array.isArray(options.partials)
         ? options.partials
         : typeof options.partials === "string"
-            ? [options.partials]
-            : [];
+          ? [options.partials]
+          : [];
 
     const initialLayout = options.layout;
     const defaultExtension = options.defaultExtension || "sqrl";
@@ -247,7 +247,7 @@ async function squirrellyify(fastify, options = {}) {
 
             return this.type("text/html").send(finalHtml);
         } catch (error) {
-            fastify.log.error(error);
+            this.request.server.log.error(error);
             if (process.env.NODE_ENV === "production") {
                 // In production, send a generic error and don't leak details
                 this.status(500).send("An internal server error occurred.");
