@@ -27,11 +27,24 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-import fs from "node:fs/promises";
-import path from "node:path";
-
 import fp from "fastify-plugin";
 import Sqrl from "squirrelly";
+
+import {
+    resolveExtension,
+    resolveInitialPartialsDirs,
+    resolveInitialTemplateDirs,
+    resolveSqrlConfig,
+    resolveUseCache,
+} from "./config.js";
+import {
+    buildTemplateSearchDirs,
+    collectViewScope,
+    createTemplateResolver,
+    preloadPartials,
+} from "./resolver.js";
+import { createRuntimeApi } from "./runtime-api.js";
+import { assertSafeName } from "./safety.js";
 
 /**
  * @typedef {object} FastifyInstance
@@ -57,191 +70,43 @@ import Sqrl from "squirrelly";
  * @param {Record<string, Function>} [options.sqrl.filters] Custom Squirrelly filters.
  */
 async function squirrellyify(fastify, options = {}) {
-    // Get initial options and set defaults from the plugin registration
-    const initialTemplatesDirs = Array.isArray(options.templates)
-        ? options.templates
-        : typeof options.templates === "string"
-          ? [options.templates]
-          : [path.join(process.cwd(), "views")];
-
-    const initialPartialsDirs = Array.isArray(options.partials)
-        ? options.partials
-        : typeof options.partials === "string"
-          ? [options.partials]
-          : [];
-
+    const initialTemplatesDirs = resolveInitialTemplateDirs(options);
+    const initialPartialsDirs = resolveInitialPartialsDirs(options);
     const initialLayout = options.layout;
-    const defaultExtension = options.defaultExtension || "sqrl";
-    const extensionWithDot = `.${defaultExtension}`;
-    const useCache = options.cache ?? process.env.NODE_ENV === "production";
-    const templateCache = new Map();
-    const pathCache = new Map();
-    const templateMeta = new Map();
+    const { extensionWithDot } = resolveExtension(options);
+    const useCache = resolveUseCache(options);
+    const { sqrlScope, sqrlConfig } = resolveSqrlConfig(options);
+    const { defineSqrlHelper, defineSqrlFilter, defineSqrlTemplate, viewHelpers, viewFilters } =
+        createRuntimeApi({
+            sqrlScope,
+            sqrlConfig,
+        });
 
-    /**
-     * When using scoped mode, clone built-ins into per-plugin caches so helpers/filters/partials
-     * do not bleed across Fastify encapsulation boundaries.
-     *
-     * @param {SqrlConfig|undefined} baseConfig
-     * @returns {SqrlConfig}
-     */
-    function createScopedSqrlConfig(baseConfig) {
-        const Cacher = Sqrl.helpers?.constructor;
-        if (typeof Cacher !== "function") {
-            throw new Error("Unable to initialize scoped Squirrelly storage.");
-        }
-
-        const scopedHelpers = new Cacher({});
-        const scopedFilters = new Cacher({});
-        const scopedTemplates = new Cacher({});
-
-        for (const helperName of [
-            "each",
-            "foreach",
-            "include",
-            "extends",
-            "useScope",
-            "includeFile",
-            "extendsFile",
-        ]) {
-            const helperFn = Sqrl.helpers.get(helperName);
-            if (helperFn) {
-                scopedHelpers.define(helperName, helperFn);
-            }
-        }
-
-        const escapeFilter = Sqrl.filters.get("e");
-        if (escapeFilter) {
-            scopedFilters.define("e", escapeFilter);
-        }
-
-        return Sqrl.getConfig(
-            {
-                ...baseConfig,
-                storage: {
-                    helpers: scopedHelpers,
-                    nativeHelpers: Sqrl.nativeHelpers,
-                    filters: scopedFilters,
-                    templates: scopedTemplates,
-                },
-            },
-            Sqrl.defaultConfig,
-        );
+    if (options.sqrl?.helpers) {
+        Object.entries(options.sqrl.helpers).forEach(([name, fn]) => {
+            defineSqrlHelper(name, fn);
+        });
+    }
+    if (options.sqrl?.filters) {
+        Object.entries(options.sqrl.filters).forEach(([name, fn]) => {
+            defineSqrlFilter(name, fn);
+        });
     }
 
-    const sqrlScope = options.sqrl?.scope === "scoped" ? "scoped" : "global";
-    const sqrlConfig =
-        sqrlScope === "scoped"
-            ? createScopedSqrlConfig(options.sqrl?.config)
-            : Sqrl.getConfig(options.sqrl?.config ?? {}, Sqrl.defaultConfig);
-    const helpersStore = sqrlScope === "scoped" ? sqrlConfig.storage.helpers : Sqrl.helpers;
-    const filtersStore = sqrlScope === "scoped" ? sqrlConfig.storage.filters : Sqrl.filters;
-    const templatesStore = sqrlScope === "scoped" ? sqrlConfig.storage.templates : Sqrl.templates;
+    await preloadPartials({
+        partialsDirs: initialPartialsDirs,
+        extensionWithDot,
+        fastify,
+        defineSqrlTemplate,
+        sqrlConfig,
+    });
 
-    function defineSqrlHelper(name, fn) {
-        helpersStore.define(name, fn);
-    }
-
-    function getSqrlHelper(name) {
-        return helpersStore.get(name);
-    }
-
-    function removeSqrlHelper(name) {
-        helpersStore.remove(name);
-    }
-
-    function defineSqrlFilter(name, fn) {
-        filtersStore.define(name, fn);
-    }
-
-    function getSqrlFilter(name) {
-        return filtersStore.get(name);
-    }
-
-    function removeSqrlFilter(name) {
-        filtersStore.remove(name);
-    }
-
-    function defineSqrlTemplate(name, fn) {
-        templatesStore.define(name, fn);
-    }
-
-    // Allow Passing Custom Squirrelly Configuration
-    if (options.sqrl) {
-        if (options.sqrl.helpers) {
-            Object.entries(options.sqrl.helpers).forEach(([name, fn]) => {
-                defineSqrlHelper(name, fn);
-            });
-        }
-        if (options.sqrl.filters) {
-            Object.entries(options.sqrl.filters).forEach(([name, fn]) => {
-                defineSqrlFilter(name, fn);
-            });
-        }
-    }
-
-    // Pre-load and define all partials on startup from all partial directories
-    if (initialPartialsDirs.length > 0) {
-        for (const partialsDir of initialPartialsDirs) {
-            try {
-                const files = await fs.readdir(partialsDir);
-                await Promise.all(
-                    files.map(async (file) => {
-                        if (file.endsWith(extensionWithDot)) {
-                            const partialPath = path.join(partialsDir, file);
-                            const partialName = path.basename(file, extensionWithDot);
-                            const content = await fs.readFile(partialPath, "utf-8");
-                            fastify.log.trace(`Loaded partial: ${partialName}`);
-                            defineSqrlTemplate(partialName, Sqrl.compile(content, sqrlConfig));
-                        }
-                    }),
-                );
-            } catch (error) {
-                fastify.log.error(`Error loading partials from ${partialsDir}: ${error.message}`);
-                throw error;
-            }
-        }
-    }
-
-    /**
-     * Compiles a template from a file path and caches it if enabled.
-     */
-    async function getTemplate(templatePath) {
-        if (useCache && templateCache.has(templatePath)) {
-            return templateCache.get(templatePath);
-        }
-        const content = await fs.readFile(templatePath, "utf-8");
-        const hasLayoutTag = /{{\s*(?:@extends|!layout)\s*\(/.test(content);
-        const compiled = Sqrl.compile(content, sqrlConfig);
-        templateMeta.set(templatePath, { hasLayoutTag });
-        if (useCache) {
-            templateCache.set(templatePath, compiled);
-        }
-        return compiled;
-    }
-
-    /**
-     * Allow nested forward-slash paths (e.g. "admin/dashboard"), but block traversal
-     * or absolute paths.
-     */
-    function assertSafeName(name) {
-        if (typeof name !== "string" || name.length === 0 || name.includes("\0")) {
-            throw new Error(`Illegal template name: ${name}`);
-        }
-        if (name.includes("\\") || path.posix.isAbsolute(name) || path.win32.isAbsolute(name)) {
-            throw new Error(`Illegal template name: ${name}`);
-        }
-        const normalized = path.posix.normalize(name);
-        if (normalized !== name || normalized === "." || normalized === "..") {
-            throw new Error(`Illegal template name: ${name}`);
-        }
-        if (normalized.startsWith("../")) {
-            throw new Error(`Illegal template name: ${name}`);
-        }
-        if (name.split("/").some((segment) => segment.length === 0 || segment === "." || segment === "..")) {
-            throw new Error(`Illegal template name: ${name}`);
-        }
-    }
+    const { findTemplatePath, getTemplate, hasLayoutTag } = createTemplateResolver({
+        fastify,
+        extensionWithDot,
+        useCache,
+        sqrlConfig,
+    });
 
     /**
      * Renders a Squirrelly template and sends it as an HTML response.
@@ -257,57 +122,14 @@ async function squirrellyify(fastify, options = {}) {
             }
 
             const instance = this.request.server;
-
-            const aggregatedTemplatesDirs = [];
-            let scopedLayout = null;
-            let currentInstance = instance;
-            while (currentInstance) {
-                if (currentInstance.views) {
-                    const dirs = Array.isArray(currentInstance.views)
-                        ? currentInstance.views
-                        : [currentInstance.views];
-                    aggregatedTemplatesDirs.push(...dirs);
-                }
-                if (
-                    scopedLayout === null &&
-                    currentInstance.layout !== null &&
-                    currentInstance.layout !== undefined
-                ) {
-                    scopedLayout = currentInstance.layout;
-                }
-                // Defensive: parent may be undefined or private
-                currentInstance = currentInstance.parent ?? null;
-            }
-
-            const templateSearchDirs = [
-                ...new Set([...aggregatedTemplatesDirs, ...initialTemplatesDirs]),
-            ];
-
-            async function findTemplatePath(templateName) {
-                const templateFile = `${templateName}${extensionWithDot}`;
-                const cacheKey = `${templateSearchDirs.join(";")}:${templateFile}`; // Create a unique key
-
-                if (useCache && pathCache.has(cacheKey)) {
-                    return pathCache.get(cacheKey);
-                }
-
-                for (const dir of templateSearchDirs) {
-                    const fullPath = path.join(dir, templateFile);
-                    try {
-                        await fs.access(fullPath);
-                        if (useCache) {
-                            pathCache.set(cacheKey, fullPath); // Cache the found path
-                        }
-                        return fullPath;
-                    } catch (error) {
-                        fastify.log.trace(error);
-                    }
-                }
-                return null;
-            }
+            const { aggregatedTemplatesDirs, scopedLayout } = collectViewScope(instance);
+            const templateSearchDirs = buildTemplateSearchDirs(
+                aggregatedTemplatesDirs,
+                initialTemplatesDirs,
+            );
 
             // 1. Find and render the page template
-            const pagePath = await findTemplatePath(template);
+            const pagePath = await findTemplatePath(template, templateSearchDirs);
             if (!pagePath) {
                 throw new Error(
                     `Template "${template}" not found in [${templateSearchDirs.join(", ")}]`,
@@ -325,13 +147,12 @@ async function squirrellyify(fastify, options = {}) {
                 return this.type("text/html").send(pageHtml);
             }
 
-            const hasLayoutTag = templateMeta.get(pagePath)?.hasLayoutTag === true;
-            if (hasLayoutTag) {
+            if (hasLayoutTag(pagePath)) {
                 return this.type("text/html").send(pageHtml);
             }
 
             // 3. Find and render the layout, injecting the page content
-            const layoutPath = await findTemplatePath(layoutFile);
+            const layoutPath = await findTemplatePath(layoutFile, templateSearchDirs);
             if (!layoutPath) {
                 throw new Error(
                     `Layout "${layoutFile}" not found in [${templateSearchDirs.join(", ")}]`,
@@ -361,16 +182,8 @@ async function squirrellyify(fastify, options = {}) {
     // Decorate the fastify instance so users can override settings in different scopes
     fastify.decorate("views", null);
     fastify.decorate("layout", null);
-    fastify.decorate("viewHelpers", {
-        define: defineSqrlHelper,
-        get: getSqrlHelper,
-        remove: removeSqrlHelper,
-    });
-    fastify.decorate("viewFilters", {
-        define: defineSqrlFilter,
-        get: getSqrlFilter,
-        remove: removeSqrlFilter,
-    });
+    fastify.decorate("viewHelpers", viewHelpers);
+    fastify.decorate("viewFilters", viewFilters);
 
     // Also expose the Squirrelly engine itself for advanced configuration (e.g., adding helpers/filters)
     fastify.decorate("Sqrl", Sqrl);
