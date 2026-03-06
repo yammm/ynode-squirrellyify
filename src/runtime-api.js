@@ -38,8 +38,18 @@ export function createRuntimeApi({ sqrlScope, sqrlConfig }) {
         filtersStore.remove(name);
     }
 
-    function defineSqrlTemplate(name, fn) {
-        templatesStore.define(name, fn);
+    function defineSqrlTemplate(name, template) {
+        const compiled = typeof template === "function" ? template : Sqrl.compile(String(template), sqrlConfig);
+        templatesStore.define(name, compiled);
+        return compiled;
+    }
+
+    function getSqrlTemplate(name) {
+        return templatesStore.get(name);
+    }
+
+    function removeSqrlTemplate(name) {
+        templatesStore.remove(name);
     }
 
     return {
@@ -55,6 +65,11 @@ export function createRuntimeApi({ sqrlScope, sqrlConfig }) {
             define: defineSqrlFilter,
             get: getSqrlFilter,
             remove: removeSqrlFilter,
+        },
+        viewPartials: {
+            define: defineSqrlTemplate,
+            get: getSqrlTemplate,
+            remove: removeSqrlTemplate,
         },
     };
 }

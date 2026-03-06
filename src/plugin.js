@@ -78,7 +78,14 @@ async function squirrellyify(fastify, options = {}) {
     const { extensionWithDot } = resolveExtension(options);
     const useCache = resolveUseCache(options);
     const { sqrlScope, sqrlConfig } = resolveSqrlConfig(options);
-    const { defineSqrlHelper, defineSqrlFilter, defineSqrlTemplate, viewHelpers, viewFilters } =
+    const {
+        defineSqrlHelper,
+        defineSqrlFilter,
+        defineSqrlTemplate,
+        viewHelpers,
+        viewFilters,
+        viewPartials,
+    } =
         createRuntimeApi({
             sqrlScope,
             sqrlConfig,
@@ -188,6 +195,7 @@ async function squirrellyify(fastify, options = {}) {
     fastify.decorate("layout", null);
     fastify.decorate("viewHelpers", viewHelpers);
     fastify.decorate("viewFilters", viewFilters);
+    fastify.decorate("viewPartials", viewPartials);
 
     // Also expose the Squirrelly engine itself for advanced configuration (e.g., adding helpers/filters)
     fastify.decorate("Sqrl", Sqrl);

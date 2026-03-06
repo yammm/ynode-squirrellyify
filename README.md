@@ -93,10 +93,11 @@ Runtime API after registration:
 
 - `fastify.viewHelpers.define(name, fn)`, `fastify.viewHelpers.get(name)`, `fastify.viewHelpers.remove(name)`
 - `fastify.viewFilters.define(name, fn)`, `fastify.viewFilters.get(name)`, `fastify.viewFilters.remove(name)`
+- `fastify.viewPartials.define(name, templateOrFn)`, `fastify.viewPartials.get(name)`, `fastify.viewPartials.remove(name)`
 
 These APIs are scope-aware:
 
-- In `global` mode they modify shared helpers/filters.
+- In `global` mode they modify shared helpers/filters/partials.
 - In `scoped` mode they only affect the current plugin registration scope.
 
 ## Advanced Usage

@@ -246,6 +246,77 @@ test("runtime API in scoped mode keeps filters isolated per registration", async
     assert.equal(appB.instance.viewFilters.get("runtimeScoped"), undefined);
 });
 
+test("runtime API in global mode shares partials across registrations", async (t) => {
+    const root = await createTempDir(t);
+    const viewsA = path.join(root, "views-a");
+    const viewsB = path.join(root, "views-b");
+    await writeTemplate(
+        viewsA,
+        "page.sqrl",
+        "<section>{{@include('runtime/card', { word: it.word })/}}</section>",
+    );
+    await writeTemplate(
+        viewsB,
+        "page.sqrl",
+        "<section>{{@include('runtime/card', { word: it.word })/}}</section>",
+    );
+
+    const appA = createFastifyHarness();
+    await appA.register({ templates: viewsA });
+    appA.instance.viewPartials.define("runtime/card", "<p>G:{{it.word}}</p>");
+
+    const appB = createFastifyHarness();
+    await appB.register({ templates: viewsB });
+
+    const fromA = await appA.render("page", { word: "one" });
+    const fromB = await appB.render("page", { word: "two" });
+    assert.equal(fromA.payload, "<section><p>G:one</p></section>");
+    assert.equal(fromB.payload, "<section><p>G:two</p></section>");
+    assert.equal(typeof appB.instance.viewPartials.get("runtime/card"), "function");
+
+    appA.instance.viewPartials.remove("runtime/card");
+    const removed = await appB.render("page", { word: "two" });
+    assert.equal(removed.statusCode, 500);
+    assert.match(String(removed.payload), /runtime\/card/);
+});
+
+test("runtime API in scoped mode isolates partials per registration", async (t) => {
+    const root = await createTempDir(t);
+    const viewsA = path.join(root, "views-a");
+    const viewsB = path.join(root, "views-b");
+    await writeTemplate(
+        viewsA,
+        "page.sqrl",
+        "<section>{{@include('runtime/card', { word: it.word })/}}</section>",
+    );
+    await writeTemplate(
+        viewsB,
+        "page.sqrl",
+        "<section>{{@include('runtime/card', { word: it.word })/}}</section>",
+    );
+
+    const appA = createFastifyHarness();
+    await appA.register({
+        templates: viewsA,
+        sqrl: { scope: "scoped" },
+    });
+    appA.instance.viewPartials.define("runtime/card", "<p>S:{{it.word}}</p>");
+
+    const appB = createFastifyHarness();
+    await appB.register({
+        templates: viewsB,
+        sqrl: { scope: "scoped" },
+    });
+
+    const fromA = await appA.render("page", { word: "one" });
+    const fromB = await appB.render("page", { word: "two" });
+    assert.equal(fromA.payload, "<section><p>S:one</p></section>");
+    assert.equal(fromB.statusCode, 500);
+    assert.match(String(fromB.payload), /runtime\/card/);
+    assert.equal(typeof appA.instance.viewPartials.get("runtime/card"), "function");
+    assert.equal(appB.instance.viewPartials.get("runtime/card"), undefined);
+});
+
 test("does not resolve page templates from partial directories", async (t) => {
     const root = await createTempDir(t);
     const viewsDir = path.join(root, "views");
