@@ -26,4 +26,7 @@
 # Git pre-commit hook
 #
 
-npx eslint --no-warn-ignored $(git diff --cached --name-only --diff-filter=ACMRTUXB | tr '\n' ' ')
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+node "${REPO_ROOT}/scripts/lint-staged.mjs"

@@ -245,3 +245,21 @@ test("runtime API in scoped mode keeps filters isolated per registration", async
     assert.equal(typeof appA.instance.viewFilters.get("runtimeScoped"), "function");
     assert.equal(appB.instance.viewFilters.get("runtimeScoped"), undefined);
 });
+
+test("does not resolve page templates from partial directories", async (t) => {
+    const root = await createTempDir(t);
+    const viewsDir = path.join(root, "views");
+    const partialsDir = path.join(root, "partials");
+    await fs.mkdir(viewsDir, { recursive: true });
+    await writeTemplate(partialsDir, "page.sqrl", "<h1>{{it.word}}</h1>");
+
+    const app = createFastifyHarness();
+    await app.register({
+        templates: viewsDir,
+        partials: partialsDir,
+    });
+
+    const rendered = await app.render("page", { word: "shadow" });
+    assert.equal(rendered.statusCode, 500);
+    assert.match(String(rendered.payload), /Template "page" not found/);
+});

@@ -279,20 +279,19 @@ async function squirrellyify(fastify, options = {}) {
                 currentInstance = currentInstance.parent ?? null;
             }
 
-            const combinedDirs = [
+            const templateSearchDirs = [
                 ...new Set([...aggregatedTemplatesDirs, ...initialTemplatesDirs]),
             ];
-            const allSearchDirs = [...new Set([...combinedDirs, ...initialPartialsDirs])];
 
             async function findTemplatePath(templateName) {
                 const templateFile = `${templateName}${extensionWithDot}`;
-                const cacheKey = `${allSearchDirs.join(";")}:${templateFile}`; // Create a unique key
+                const cacheKey = `${templateSearchDirs.join(";")}:${templateFile}`; // Create a unique key
 
                 if (useCache && pathCache.has(cacheKey)) {
                     return pathCache.get(cacheKey);
                 }
 
-                for (const dir of allSearchDirs) {
+                for (const dir of templateSearchDirs) {
                     const fullPath = path.join(dir, templateFile);
                     try {
                         await fs.access(fullPath);
@@ -311,7 +310,7 @@ async function squirrellyify(fastify, options = {}) {
             const pagePath = await findTemplatePath(template);
             if (!pagePath) {
                 throw new Error(
-                    `Template "${template}" not found in [${allSearchDirs.join(", ")}]`,
+                    `Template "${template}" not found in [${templateSearchDirs.join(", ")}]`,
                 );
             }
 
@@ -335,7 +334,7 @@ async function squirrellyify(fastify, options = {}) {
             const layoutPath = await findTemplatePath(layoutFile);
             if (!layoutPath) {
                 throw new Error(
-                    `Layout "${layoutFile}" not found in [${allSearchDirs.join(", ")}]`,
+                    `Layout "${layoutFile}" not found in [${templateSearchDirs.join(", ")}]`,
                 );
             }
 

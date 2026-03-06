@@ -197,8 +197,10 @@ different settings for different route prefixes.
 import Fastify from "fastify";
 import squirrellyify from "@ynode/squirrellyify";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const fastify = Fastify();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Register with default settings
 fastify.register(squirrellyify, {
