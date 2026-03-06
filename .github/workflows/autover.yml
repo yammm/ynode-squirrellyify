@@ -30,7 +30,7 @@ jobs:
               id: autover
               run: |
                   set -euo pipefail
-                  line="$(npx --yes autover --workspaces --guard-unchanged --no-amend --dry-run --short || true)"
+                  line="$(npx --yes autover --workspaces --guard-unchanged --no-amend --dry-run --short)"
                   echo "$line"
                   echo "summary=${line//'%'/'%25'}" >> "$GITHUB_OUTPUT"
             - name: Comment on PR with version summary
@@ -96,7 +96,7 @@ jobs:
               id: apply_autover
               run: |
                   set -euo pipefail
-                  line="$(npx --yes autover --workspaces --guard-unchanged --short || true)"
+                  line="$(npx --yes autover --workspaces --guard-unchanged --short)"
                   echo "$line"
                   echo "summary=${line//'%'/'%25'}" >> "$GITHUB_OUTPUT"
 
@@ -123,7 +123,7 @@ jobs:
                       if (!prNumber) return;
                       const summary = `${{ toJSON(steps.apply_autover.outputs.summary) }}`.replace(/^"|"$/g, "");
                       const body = summary && summary.trim().length
-                        ? `✅ **autver** applied on \`main\`\n\n\`${summary}\``
+                        ? `✅ **autover** applied on \`main\`\n\n\`${summary}\``
                         : "ℹ️ **autover** ran on `main` but produced no changes.";
                       await github.rest.issues.createComment({
                         owner: context.repo.owner,
