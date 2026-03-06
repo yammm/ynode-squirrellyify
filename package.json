@@ -1,6 +1,6 @@
 {
     "name": "@ynode/squirrellyify",
-    "version": "1.0.2+92998.v1.0.2-1-g0aee11a",
+    "version": "1.0.2+93120.v1.0.2-2-gdb7ae41",
     "description": "Fastify plugin for rendering Squirrelly templates.",
     "main": "src/plugin.js",
     "type": "module",
@@ -31,6 +31,7 @@
         "eslint": "^9.37.0",
         "eslint-config-prettier": "^10.1.8",
         "eslint-plugin-prettier": "^5.5.4",
+        "fastify": "^5.8.1",
         "globals": "^16.4.0",
         "prettier": "^3.6.2",
         "rimraf": "^6.0.1",
@@ -44,10 +45,12 @@
         "format:check": "prettier --check .",
         "lint": "eslint .",
         "lint:fix": "eslint . --fix",
+        "test:integration": "node --test tests/**/*.test.js",
+        "test:staged": "eslint --no-warn-ignored $(git diff --cached --name-only --diff-filter=ACMRTUXB | tr '\\n' ' ')",
         "ver:preview": "npx autover --no-amend --dry-run --short",
         "ver:apply": "npx autover --guard-unchanged --short",
-        "test": "eslint --no-warn-ignored $(git diff --cached --name-only --diff-filter=ACMRTUXB | tr '\\n' ' ')",
-        "prepublishOnly": "npm test || true",
+        "test": "npm run lint && npm run test:integration",
+        "prepublishOnly": "npm test",
         "postversion": "git push && git push --tags"
     },
     "publishConfig": {
@@ -61,7 +64,7 @@
     "dependencies": {
         "fastify-plugin": "^5.1.0"
     },
-    "peerDependency": {
+    "peerDependencies": {
         "squirrelly": "^9.1.0"
     }
 }

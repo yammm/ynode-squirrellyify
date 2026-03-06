@@ -13,7 +13,7 @@ A simple and fast plugin for using the [Squirrelly](https://squirrelly.js.org/) 
 - 🐿️ **Modern Templating:** Full support for Squirrelly v9 features.
 - ⚡ **High Performance:** Template caching is enabled by default in production.
 - 📁 **Layouts & Partials:** Built-in support for layouts and shared partials.
-- 🧬 **Encapsulation-Aware:** Respects Fastify's encapsulation model for s ed configurations.
+- 🧬 **Encapsulation-Aware:** Supports Fastify encapsulation with scoped template settings.
 - 🛡️ **Secure:** Protects against path traversal attacks in template names.
 - 🔧 **Extensible:** Easily add custom Squirrelly helpers and filters.
 
@@ -81,11 +81,21 @@ You can pass an options object when registering the plugin.
 | Option             | Type                 | Default                             | Description                                                                                                                          |
 | ------------------ | -------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | `templates`        | `string \| string[]` | `path.join(process.cwd(), "views")` | The directory or directories to search for page and layout templates. Searched in the provided order.                                |
-| `partials`         | `string \| string[]` | `[]`                                | The directory or directories for partial templates. All partials are loaded on startup and are available globally by their filename. |
+| `partials`         | `string \| string[]` | `[]`                                | The directory or directories for partial templates. All partials are loaded on startup and available by filename.                     |
 | `layout`           | `string`             | `undefined`                         | The name of the default layout file to use (without extension). Can be overridden per-route.                                         |
 | `defaultExtension` | `string`             | `"sqrl"`                            | The file extension for all template files.                                                                                           |
 | `cache`            | `boolean`            | `NODE_ENV === "production"`         | If `true`, compiled templates and resolved file paths will be cached in memory.                                                      |
-| `sqrl`             | `object`             | `undefined`                         | An object to configure Squirrelly. Currently supports `{ helpers: {}, filters: {} }` for adding custom functions.                    |
+| `sqrl`             | `object`             | `undefined`                         | Squirrelly options. Supports `{ scope: "global" \| "scoped", config, helpers, filters }`.                                            |
+
+Runtime API after registration:
+
+- `fastify.viewHelpers.define(name, fn)`, `fastify.viewHelpers.get(name)`, `fastify.viewHelpers.remove(name)`
+- `fastify.viewFilters.define(name, fn)`, `fastify.viewFilters.get(name)`, `fastify.viewFilters.remove(name)`
+
+These APIs are scope-aware:
+
+- In `global` mode they modify shared helpers/filters.
+- In `scoped` mode they only affect the current plugin registration scope.
 
 ## Advanced Usage
 
@@ -157,7 +167,7 @@ there. They will be automatically registered by their filename.
 
 ```html
 <div class="card">
-    <h3>{{ it.name }}</h4>
+    <h3>{{ it.name }}</h3>
     <p>{{ it.email }}</p>
 </div>
 ```
@@ -223,6 +233,14 @@ fastify.register(
 
 You can extend Squirrelly with custom helper and filter functions via the `sqrl` option.
 
+Use `sqrl.scope` to choose registration mode:
+
+- `global` (default): helpers, filters, and partials are shared across plugin registrations.
+- `scoped`: helpers, filters, and partials are isolated to each plugin registration.
+
+You can also add/remove helpers and filters at runtime via `fastify.viewHelpers` and
+`fastify.viewFilters`.
+
 ```javascript
 fastify.register(squirrellyify, {
     templates: "views",
@@ -243,4 +261,4 @@ fastify.register(squirrellyify, {
 
 ## License
 
-This project is licensed under the [MIT Lisence](./LICENSE).
+This project is licensed under the [MIT License](./LICENSE).

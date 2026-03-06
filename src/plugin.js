@@ -50,6 +50,11 @@ import Sqrl from "squirrelly";
  * @param {string} [options.layout] The name of the default layout file to use (without extension).
  * @param {string} [options.defaultExtension="sqrl"] The default extension for template files.
  * @param {boolean} [options.cache] Enables template caching. Defaults to true if NODE_ENV is "production".
+ * @param {object} [options.sqrl] Squirrelly engine options.
+ * @param {"global"|"scoped"} [options.sqrl.scope="global"] Whether to share helpers/filters/partials globally or isolate them per Fastify registration.
+ * @param {SqrlConfig} [options.sqrl.config] Squirrelly compile/render config.
+ * @param {Record<string, Function>} [options.sqrl.helpers] Custom Squirrelly helpers.
+ * @param {Record<string, Function>} [options.sqrl.filters] Custom Squirrelly filters.
  */
 async function squirrellyify(fastify, options = {}) {
     // Get initial options and set defaults from the plugin registration
@@ -73,24 +78,109 @@ async function squirrellyify(fastify, options = {}) {
     const pathCache = new Map();
     const templateMeta = new Map();
 
-    // Allow passing optional Squirrelly compile/render configuration
-    const sqrlConfig = options.sqrl?.config;
+    /**
+     * When using scoped mode, clone built-ins into per-plugin caches so helpers/filters/partials
+     * do not bleed across Fastify encapsulation boundaries.
+     *
+     * @param {SqrlConfig|undefined} baseConfig
+     * @returns {SqrlConfig}
+     */
+    function createScopedSqrlConfig(baseConfig) {
+        const Cacher = Sqrl.helpers?.constructor;
+        if (typeof Cacher !== "function") {
+            throw new Error("Unable to initialize scoped Squirrelly storage.");
+        }
+
+        const scopedHelpers = new Cacher({});
+        const scopedFilters = new Cacher({});
+        const scopedTemplates = new Cacher({});
+
+        for (const helperName of [
+            "each",
+            "foreach",
+            "include",
+            "extends",
+            "useScope",
+            "includeFile",
+            "extendsFile",
+        ]) {
+            const helperFn = Sqrl.helpers.get(helperName);
+            if (helperFn) {
+                scopedHelpers.define(helperName, helperFn);
+            }
+        }
+
+        const escapeFilter = Sqrl.filters.get("e");
+        if (escapeFilter) {
+            scopedFilters.define("e", escapeFilter);
+        }
+
+        return Sqrl.getConfig(
+            {
+                ...baseConfig,
+                storage: {
+                    helpers: scopedHelpers,
+                    nativeHelpers: Sqrl.nativeHelpers,
+                    filters: scopedFilters,
+                    templates: scopedTemplates,
+                },
+            },
+            Sqrl.defaultConfig,
+        );
+    }
+
+    const sqrlScope = options.sqrl?.scope === "scoped" ? "scoped" : "global";
+    const sqrlConfig =
+        sqrlScope === "scoped"
+            ? createScopedSqrlConfig(options.sqrl?.config)
+            : Sqrl.getConfig(options.sqrl?.config ?? {}, Sqrl.defaultConfig);
+    const helpersStore = sqrlScope === "scoped" ? sqrlConfig.storage.helpers : Sqrl.helpers;
+    const filtersStore = sqrlScope === "scoped" ? sqrlConfig.storage.filters : Sqrl.filters;
+    const templatesStore = sqrlScope === "scoped" ? sqrlConfig.storage.templates : Sqrl.templates;
+
+    function defineSqrlHelper(name, fn) {
+        helpersStore.define(name, fn);
+    }
+
+    function getSqrlHelper(name) {
+        return helpersStore.get(name);
+    }
+
+    function removeSqrlHelper(name) {
+        helpersStore.remove(name);
+    }
+
+    function defineSqrlFilter(name, fn) {
+        filtersStore.define(name, fn);
+    }
+
+    function getSqrlFilter(name) {
+        return filtersStore.get(name);
+    }
+
+    function removeSqrlFilter(name) {
+        filtersStore.remove(name);
+    }
+
+    function defineSqrlTemplate(name, fn) {
+        templatesStore.define(name, fn);
+    }
 
     // Allow Passing Custom Squirrelly Configuration
     if (options.sqrl) {
         if (options.sqrl.helpers) {
             Object.entries(options.sqrl.helpers).forEach(([name, fn]) => {
-                Sqrl.helpers.define(name, fn);
+                defineSqrlHelper(name, fn);
             });
         }
         if (options.sqrl.filters) {
             Object.entries(options.sqrl.filters).forEach(([name, fn]) => {
-                Sqrl.filters.define(name, fn);
+                defineSqrlFilter(name, fn);
             });
         }
     }
 
-    // Pre-load and define all partials globally on startup from all partial directories
+    // Pre-load and define all partials on startup from all partial directories
     if (initialPartialsDirs.length > 0) {
         for (const partialsDir of initialPartialsDirs) {
             try {
@@ -102,7 +192,7 @@ async function squirrellyify(fastify, options = {}) {
                             const partialName = path.basename(file, extensionWithDot);
                             const content = await fs.readFile(partialPath, "utf-8");
                             fastify.log.trace(`Loaded partial: ${partialName}`);
-                            Sqrl.templates.define(partialName, Sqrl.compile(content, sqrlConfig));
+                            defineSqrlTemplate(partialName, Sqrl.compile(content, sqrlConfig));
                         }
                     }),
                 );
@@ -131,16 +221,24 @@ async function squirrellyify(fastify, options = {}) {
     }
 
     /**
-     * Because template comes from route code, a mistaken ../ could escape the views dir.
-     * Disallow path separators and .. in template/layout names.
+     * Allow nested forward-slash paths (e.g. "admin/dashboard"), but block traversal
+     * or absolute paths.
      */
     function assertSafeName(name) {
-        if (
-            name.includes("..") ||
-            name.includes(path.sep) ||
-            name.includes("/") ||
-            name.includes("\\")
-        ) {
+        if (typeof name !== "string" || name.length === 0 || name.includes("\0")) {
+            throw new Error(`Illegal template name: ${name}`);
+        }
+        if (name.includes("\\") || path.posix.isAbsolute(name) || path.win32.isAbsolute(name)) {
+            throw new Error(`Illegal template name: ${name}`);
+        }
+        const normalized = path.posix.normalize(name);
+        if (normalized !== name || normalized === "." || normalized === "..") {
+            throw new Error(`Illegal template name: ${name}`);
+        }
+        if (normalized.startsWith("../")) {
+            throw new Error(`Illegal template name: ${name}`);
+        }
+        if (name.split("/").some((segment) => segment.length === 0 || segment === "." || segment === "..")) {
             throw new Error(`Illegal template name: ${name}`);
         }
     }
@@ -218,7 +316,7 @@ async function squirrellyify(fastify, options = {}) {
             }
 
             const pageTemplate = await getTemplate(pagePath);
-            const pageHtml = pageTemplate(data, sqrlConfig ?? Sqrl.defaultConfig);
+            const pageHtml = await pageTemplate(data, sqrlConfig);
 
             // 2. Determine which layout to use
             const currentLayout = scopedLayout !== null ? scopedLayout : initialLayout;
@@ -243,7 +341,7 @@ async function squirrellyify(fastify, options = {}) {
 
             const layoutTemplate = await getTemplate(layoutPath);
             const layoutData = { ...data, ...data.layoutData, body: pageHtml };
-            const finalHtml = layoutTemplate(layoutData, sqrlConfig ?? Sqrl.defaultConfig);
+            const finalHtml = await layoutTemplate(layoutData, sqrlConfig);
 
             return this.type("text/html").send(finalHtml);
         } catch (error) {
@@ -264,6 +362,16 @@ async function squirrellyify(fastify, options = {}) {
     // Decorate the fastify instance so users can override settings in different scopes
     fastify.decorate("views", null);
     fastify.decorate("layout", null);
+    fastify.decorate("viewHelpers", {
+        define: defineSqrlHelper,
+        get: getSqrlHelper,
+        remove: removeSqrlHelper,
+    });
+    fastify.decorate("viewFilters", {
+        define: defineSqrlFilter,
+        get: getSqrlFilter,
+        remove: removeSqrlFilter,
+    });
 
     // Also expose the Squirrelly engine itself for advanced configuration (e.g., adding helpers/filters)
     fastify.decorate("Sqrl", Sqrl);
