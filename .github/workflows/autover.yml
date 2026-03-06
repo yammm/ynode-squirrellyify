@@ -49,7 +49,7 @@ jobs:
                       });
 
     apply:
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.actor != 'github-actions[bot]' }}
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
@@ -96,23 +96,41 @@ jobs:
               id: apply_autover
               run: |
                   set -euo pipefail
-                  line="$(npx --yes autover --workspaces --guard-unchanged --short)"
+                  line="$(npx --yes autover --workspaces --guard-unchanged --no-amend --short)"
                   echo "$line"
                   echo "summary=${line//'%'/'%25'}" >> "$GITHUB_OUTPUT"
 
-            - name: Push amended commit back
-              run: git push --force-with-lease
+            - name: Commit version changes
+              id: commit_autover
+              run: |
+                  set -euo pipefail
+                  if [ -z "$(git status --porcelain)" ]; then
+                    echo "changed=false" >> "$GITHUB_OUTPUT"
+                    echo "No autover file changes to commit."
+                    exit 0
+                  fi
+                  git add -A
+                  git commit -m "chore: apply autover version metadata"
+                  echo "changed=true" >> "$GITHUB_OUTPUT"
+
+            - name: Push autover commit back
+              if: ${{ steps.commit_autover.outputs.changed == 'true' }}
+              run: git push
 
             - name: Optionally create tag from autover output
-              if: ${{ env.CREATE_TAG == 'true' }}
+              if: ${{ env.CREATE_TAG == 'true' && steps.commit_autover.outputs.changed == 'true' }}
               run: |
                   set -euo pipefail
                   line="${{ steps.apply_autover.outputs.summary }}"
                   ver="$(echo "$line" | awk -F'|' '{gsub(/^ *| *$/,"",$2); print $2}')"
                   if [ -n "$ver" ] && [ "$ver" != "unchanged" ]; then
                     tag="v$(echo "$ver" | sed 's/[+-].*$//')"
-                    git tag -f "$tag"
-                    git push -f origin "$tag"
+                    if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+                      echo "Tag $tag already exists; skipping."
+                    else
+                      git tag "$tag"
+                      git push origin "$tag"
+                    fi
                   fi
 
             - name: Comment result on the source PR
