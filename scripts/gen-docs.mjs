@@ -24,8 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 /**
- * Generates a `yuidoc.json` configuration file dynamically from `package.json`
- * and runs YUIDoc to produce project documentation in the `docs/` directory.
+ * Generates a `jsdoc.json` configuration file dynamically from `package.json`
+ * and runs JSDoc to produce project documentation in the `docs/` directory.
  *
  * @module gen-docs
  * @main gen-docs
@@ -61,7 +61,7 @@ const version = pkg.version ?? "0.0.0";
 const url = (pkg.homepage ?? "").toString();
 
 /**
- * Ensures that the output directory for YUIDoc exists.
+ * Ensures that the output directory for JSDoc exists.
  *
  * @property {string} outdir Path to the documentation output directory.
  */
@@ -71,41 +71,52 @@ if (!existsSync(outdir)) {
 }
 
 /**
- * Build the YUIDoc configuration object from package.json metadata.
+ * Build the JSDoc configuration object from package.json metadata.
  *
- * @property {Object} yui
- * @property {Object} yui.options Paths, output, and generation options for YUIDoc.
+ * @property {Object} jsdoc
+ * @property {Object} jsdoc.opts Paths, output, and generation options for JSDoc.
  */
-const yui = {
-    name: name,
-    description: description,
-    version: version,
-    url: url,
-    options: {
-        paths: ["src"],
-        outdir: "docs",
-        exclude: ["node_modules", ".git"].join(","),
-        extensions: [".js"].join(","),
-        syntaxtype: "js",
-        quiet: true,
+const jsdoc = {
+    source: {
+        include: ["src"],
+        exclude: ["node_modules", ".git"],
+    },
+    opts: {
+        destination: outdir,
+        recurse: true,
+        readme: "README.md",
+        encoding: "utf8",
+        lenient: true,
+    },
+    plugins: ["plugins/markdown"],
+    templates: {
+        default: {
+            includeDate: false,
+        },
+    },
+    metadata: {
+        name,
+        description,
+        version,
+        url,
     },
 };
 
 /**
- * Write the configuration to `yuidoc.json` at the project root.
+ * Write the configuration to `jsdoc.json` at the project root.
  *
- * @property {string} yuiPath Full path to the generated YUIDoc configuration file.
+ * @property {string} jsdocPath Full path to the generated JSDoc configuration file.
  */
-const yuiPath = resolve(process.cwd(), "yuidoc.json");
-writeFileSync(yuiPath, JSON.stringify(yui, null, 4) + "\n", "utf8");
+const jsdocPath = resolve(process.cwd(), "jsdoc.json");
+writeFileSync(jsdocPath, JSON.stringify(jsdoc, null, 4) + "\n", "utf8");
 
 /**
- * Executes YUIDoc with the generated configuration.
+ * Executes JSDoc with the generated configuration.
  *
  * @method execFileSync
  * @param {string} "npx" - CLI command.
- * @param {Array<string>} ["-y", "yuidoc"] - Command arguments to invoke YUIDoc.
+ * @param {Array<string>} ["jsdoc", "-c", "jsdoc.json"] - Command arguments to invoke JSDoc.
  * @param {Object} options - Subprocess options (inherit stdio for live output).
  * @return {void}
  */
-execFileSync("npx", ["-y", "yuidoc"], { stdio: "inherit" });
+execFileSync("npx", ["jsdoc", "-c", "jsdoc.json"], { stdio: "inherit" });

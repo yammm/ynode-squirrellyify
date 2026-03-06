@@ -34,9 +34,9 @@ import fp from "fastify-plugin";
 import Sqrl from "squirrelly";
 
 /**
- * @typedef {import("fastify").FastifyInstance} FastifyInstance
- * @typedef {import("fastify").FastifyReply} FastifyReply
- * @typedef {import("squirrelly").SqrlConfig} SqrlConfig
+ * @typedef {object} FastifyInstance
+ * @typedef {object} FastifyReply
+ * @typedef {object} SqrlConfig
  */
 
 /**
