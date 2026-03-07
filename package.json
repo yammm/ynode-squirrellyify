@@ -1,6 +1,6 @@
 {
     "name": "@ynode/squirrellyify",
-    "version": "1.4.0",
+    "version": "1.4.1",
     "description": "Fastify plugin for rendering Squirrelly templates.",
     "main": "src/plugin.js",
     "type": "module",
