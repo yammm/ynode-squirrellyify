@@ -92,29 +92,20 @@ test("allows nested forward-slash template names and blocks traversal", async (t
 });
 
 test("validates plugin option types with clear registration errors", async () => {
-    await assert.rejects(
-        async () => {
-            const app = createFastifyHarness();
-            await app.register({ partialsRecursive: "yes" });
-        },
-        /Invalid option "partialsRecursive": expected a boolean/,
-    );
+    await assert.rejects(async () => {
+        const app = createFastifyHarness();
+        await app.register({ partialsRecursive: "yes" });
+    }, /Invalid option "partialsRecursive": expected a boolean/);
 
-    await assert.rejects(
-        async () => {
-            const app = createFastifyHarness();
-            await app.register({ sqrl: { scope: "tenant" } });
-        },
-        /Invalid option "sqrl.scope": expected "global" or "scoped"/,
-    );
+    await assert.rejects(async () => {
+        const app = createFastifyHarness();
+        await app.register({ sqrl: { scope: "tenant" } });
+    }, /Invalid option "sqrl.scope": expected "global" or "scoped"/);
 
-    await assert.rejects(
-        async () => {
-            const app = createFastifyHarness();
-            await app.register({ sqrl: { filters: { bad: "not-a-function" } } });
-        },
-        /Invalid option "sqrl.filters.bad": expected a function/,
-    );
+    await assert.rejects(async () => {
+        const app = createFastifyHarness();
+        await app.register({ sqrl: { filters: { bad: "not-a-function" } } });
+    }, /Invalid option "sqrl.filters.bad": expected a function/);
 });
 
 test("accepts defaultExtension with a leading dot", async (t) => {
@@ -136,11 +127,7 @@ test("accepts defaultExtension with a leading dot", async (t) => {
 test("merges reply context and locals into view data with explicit data precedence", async (t) => {
     const root = await createTempDir(t);
     const viewsDir = path.join(root, "views");
-    await writeTemplate(
-        viewsDir,
-        "page.sqrl",
-        "<h1>{{it.name}}</h1><p>{{it.greeting}}</p><p>{{it.title}}</p>",
-    );
+    await writeTemplate(viewsDir, "page.sqrl", "<h1>{{it.name}}</h1><p>{{it.greeting}}</p><p>{{it.title}}</p>");
 
     const app = createFastifyHarness();
     await app.register({ templates: viewsDir });
@@ -155,10 +142,7 @@ test("merges reply context and locals into view data with explicit data preceden
     );
 
     assert.equal(rendered.statusCode, 200);
-    assert.equal(
-        rendered.payload,
-        "<h1>Route Name</h1><p>Hello from locals</p><p>Context Title</p>",
-    );
+    assert.equal(rendered.payload, "<h1>Route Name</h1><p>Hello from locals</p><p>Context Title</p>");
 });
 
 test("renders async templates and layouts when sqrl.config.async is enabled", async (t) => {
@@ -321,16 +305,8 @@ test("runtime API in global mode shares partials across registrations", async (t
     const root = await createTempDir(t);
     const viewsA = path.join(root, "views-a");
     const viewsB = path.join(root, "views-b");
-    await writeTemplate(
-        viewsA,
-        "page.sqrl",
-        "<section>{{@include('runtime/card', { word: it.word })/}}</section>",
-    );
-    await writeTemplate(
-        viewsB,
-        "page.sqrl",
-        "<section>{{@include('runtime/card', { word: it.word })/}}</section>",
-    );
+    await writeTemplate(viewsA, "page.sqrl", "<section>{{@include('runtime/card', { word: it.word })/}}</section>");
+    await writeTemplate(viewsB, "page.sqrl", "<section>{{@include('runtime/card', { word: it.word })/}}</section>");
 
     const appA = createFastifyHarness();
     await appA.register({ templates: viewsA });
@@ -355,16 +331,8 @@ test("runtime API in scoped mode isolates partials per registration", async (t) 
     const root = await createTempDir(t);
     const viewsA = path.join(root, "views-a");
     const viewsB = path.join(root, "views-b");
-    await writeTemplate(
-        viewsA,
-        "page.sqrl",
-        "<section>{{@include('runtime/card', { word: it.word })/}}</section>",
-    );
-    await writeTemplate(
-        viewsB,
-        "page.sqrl",
-        "<section>{{@include('runtime/card', { word: it.word })/}}</section>",
-    );
+    await writeTemplate(viewsA, "page.sqrl", "<section>{{@include('runtime/card', { word: it.word })/}}</section>");
+    await writeTemplate(viewsB, "page.sqrl", "<section>{{@include('runtime/card', { word: it.word })/}}</section>");
 
     const appA = createFastifyHarness();
     await appA.register({

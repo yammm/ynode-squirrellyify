@@ -51,16 +51,8 @@ test("fastify inject: renders nested template path with layout", async (t) => {
 test("fastify inject: merges reply locals into view data and keeps explicit data precedence", async (t) => {
     const root = await createTempDir(t);
     const viewsDir = path.join(root, "views");
-    await writeTemplate(
-        viewsDir,
-        "layouts/main.sqrl",
-        "<main><h2>{{it.title}}</h2>{{it.body | safe}}</main>",
-    );
-    await writeTemplate(
-        viewsDir,
-        "pages/home.sqrl",
-        "<h1>{{it.name}}</h1><p>{{it.greeting}}</p>",
-    );
+    await writeTemplate(viewsDir, "layouts/main.sqrl", "<main><h2>{{it.title}}</h2>{{it.body | safe}}</main>");
+    await writeTemplate(viewsDir, "pages/home.sqrl", "<h1>{{it.name}}</h1><p>{{it.greeting}}</p>");
 
     const app = Fastify();
     t.after(async () => {
@@ -83,10 +75,7 @@ test("fastify inject: merges reply locals into view data and keeps explicit data
     const response = await app.inject({ method: "GET", url: "/" });
     assert.equal(response.statusCode, 200);
     assert.match(response.headers["content-type"] ?? "", /^text\/html/);
-    assert.equal(
-        response.payload,
-        "<main><h2>Local Title</h2><h1>Route Name</h1><p>Hello from locals</p></main>",
-    );
+    assert.equal(response.payload, "<main><h2>Local Title</h2><h1>Route Name</h1><p>Hello from locals</p></main>");
 });
 
 test("fastify inject: scoped runtime filters stay isolated across scopes", async (t) => {

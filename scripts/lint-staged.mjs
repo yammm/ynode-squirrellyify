@@ -4,11 +4,9 @@ import { execFileSync } from "node:child_process";
 import process from "node:process";
 
 try {
-    const stagedOutput = execFileSync(
-        "git",
-        ["diff", "--cached", "--name-only", "--diff-filter=ACMRTUXB", "-z"],
-        { encoding: "utf8" },
-    );
+    const stagedOutput = execFileSync("git", ["diff", "--cached", "--name-only", "--diff-filter=ACMRTUXB", "-z"], {
+        encoding: "utf8",
+    });
     const files = stagedOutput.split("\0").filter(Boolean);
 
     if (files.length === 0) {

@@ -79,12 +79,7 @@ export async function preloadPartials({
             const files = await collectPartialFiles(partialsDir, extensionWithDot, partialsRecursive);
             await Promise.all(
                 files.map(async (partialPath) => {
-                    const partialName = resolvePartialName(
-                        partialPath,
-                        partialsDir,
-                        extensionWithDot,
-                        namespace,
-                    );
+                    const partialName = resolvePartialName(partialPath, partialsDir, extensionWithDot, namespace);
                     const content = await fs.readFile(partialPath, "utf-8");
                     fastify.log.trace(`Loaded partial: ${partialName}`);
                     defineSqrlTemplate(partialName, Sqrl.compile(content, sqrlConfig));
@@ -110,9 +105,7 @@ export function collectViewScope(instance) {
 
     while (currentInstance) {
         if (currentInstance.views) {
-            const dirs = Array.isArray(currentInstance.views)
-                ? currentInstance.views
-                : [currentInstance.views];
+            const dirs = Array.isArray(currentInstance.views) ? currentInstance.views : [currentInstance.views];
             aggregatedTemplatesDirs.push(...dirs);
         }
         if (scopedLayout === null && currentInstance.layout !== null && currentInstance.layout !== undefined) {

@@ -19,18 +19,13 @@ function assertOptionType(condition, message) {
 function normalizeDefaultExtension(defaultExtension) {
     const normalized = defaultExtension.replace(/^\.+/, "");
     if (normalized.length === 0) {
-        throw new TypeError(
-            'Invalid option "defaultExtension": must contain at least one non-dot character.',
-        );
+        throw new TypeError('Invalid option "defaultExtension": must contain at least one non-dot character.');
     }
     return normalized;
 }
 
 export function validatePluginOptions(options = {}) {
-    assertOptionType(
-        isPlainObject(options),
-        "Invalid options: plugin options must be a plain object.",
-    );
+    assertOptionType(isPlainObject(options), "Invalid options: plugin options must be a plain object.");
 
     if (options.templates !== undefined) {
         assertOptionType(
@@ -52,8 +47,7 @@ export function validatePluginOptions(options = {}) {
     }
     if (options.partialsNamespace !== undefined) {
         assertOptionType(
-            typeof options.partialsNamespace === "boolean" ||
-                typeof options.partialsNamespace === "string",
+            typeof options.partialsNamespace === "boolean" || typeof options.partialsNamespace === "string",
             'Invalid option "partialsNamespace": expected a boolean or a string.',
         );
     }
@@ -80,10 +74,7 @@ export function validatePluginOptions(options = {}) {
             );
         }
         if (options.sqrl.config !== undefined) {
-            assertOptionType(
-                isPlainObject(options.sqrl.config),
-                'Invalid option "sqrl.config": expected an object.',
-            );
+            assertOptionType(isPlainObject(options.sqrl.config), 'Invalid option "sqrl.config": expected an object.');
         }
         if (options.sqrl.helpers !== undefined) {
             assertOptionType(
@@ -130,9 +121,7 @@ export function resolveInitialPartialsDirs(options = {}) {
 
 export function resolveExtension(options = {}) {
     const defaultExtension =
-        options.defaultExtension !== undefined
-            ? normalizeDefaultExtension(options.defaultExtension)
-            : "sqrl";
+        options.defaultExtension !== undefined ? normalizeDefaultExtension(options.defaultExtension) : "sqrl";
     return {
         defaultExtension,
         extensionWithDot: `.${defaultExtension}`,
@@ -153,15 +142,7 @@ function createScopedSqrlConfig(baseConfig) {
     const scopedFilters = new Cacher({});
     const scopedTemplates = new Cacher({});
 
-    for (const helperName of [
-        "each",
-        "foreach",
-        "include",
-        "extends",
-        "useScope",
-        "includeFile",
-        "extendsFile",
-    ]) {
+    for (const helperName of ["each", "foreach", "include", "extends", "useScope", "includeFile", "extendsFile"]) {
         const helperFn = Sqrl.helpers.get(helperName);
         if (helperFn) {
             scopedHelpers.define(helperName, helperFn);

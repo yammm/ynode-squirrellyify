@@ -76,8 +76,8 @@ fastify.listen({ port: 3000 }, (err) => {
 
 ### Request-Scoped View Data
 
-`reply.view(template, data)` automatically merges request-scoped values from `reply.locals` and
-`reply.context` into the template data:
+`reply.view(template, data)` automatically merges request-scoped values from `reply.locals` and `reply.context` into the
+template data:
 
 ```javascript
 fastify.addHook("preHandler", async (request, reply) => {
@@ -100,22 +100,23 @@ Merge precedence is:
 
 You can pass an options object when registering the plugin.
 
-| Option             | Type                 | Default                             | Description                                                                                                                          |
-| ------------------ | -------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `templates`        | `string \| string[]` | `path.join(process.cwd(), "views")` | The directory or directories to search for page and layout templates. Searched in the provided order.                                |
-| `partials`         | `string \| string[]` | `[]`                                | The directory or directories for partial templates. All partials are loaded on startup and available by name.                         |
-| `partialsRecursive` | `boolean`           | `true`                              | If `true`, partials are loaded recursively from subdirectories. Names use forward slashes (for example, `emails/header`).           |
-| `partialsNamespace` | `boolean \| string` | `false`                             | Optional namespace prefix for partial names. Use `true` to prefix with each partials directory basename, or provide a custom string. |
-| `layout`           | `string`             | `undefined`                         | The name of the default layout file to use (without extension). Can be overridden per-route.                                         |
-| `defaultExtension` | `string`             | `"sqrl"`                            | The file extension for all template files. Leading `.` is optional (for example, `"html"` or `".html"`).                           |
-| `cache`            | `boolean`            | `NODE_ENV === "production"`         | If `true`, compiled templates and resolved file paths will be cached in memory.                                                      |
-| `sqrl`             | `object`             | `undefined`                         | Squirrelly options. Supports `{ scope: "global" \| "scoped", config, helpers, filters }`.                                            |
+| Option              | Type                 | Default                             | Description                                                                                                                          |
+| ------------------- | -------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `templates`         | `string \| string[]` | `path.join(process.cwd(), "views")` | The directory or directories to search for page and layout templates. Searched in the provided order.                                |
+| `partials`          | `string \| string[]` | `[]`                                | The directory or directories for partial templates. All partials are loaded on startup and available by name.                        |
+| `partialsRecursive` | `boolean`            | `true`                              | If `true`, partials are loaded recursively from subdirectories. Names use forward slashes (for example, `emails/header`).            |
+| `partialsNamespace` | `boolean \| string`  | `false`                             | Optional namespace prefix for partial names. Use `true` to prefix with each partials directory basename, or provide a custom string. |
+| `layout`            | `string`             | `undefined`                         | The name of the default layout file to use (without extension). Can be overridden per-route.                                         |
+| `defaultExtension`  | `string`             | `"sqrl"`                            | The file extension for all template files. Leading `.` is optional (for example, `"html"` or `".html"`).                             |
+| `cache`             | `boolean`            | `NODE_ENV === "production"`         | If `true`, compiled templates and resolved file paths will be cached in memory.                                                      |
+| `sqrl`              | `object`             | `undefined`                         | Squirrelly options. Supports `{ scope: "global" \| "scoped", config, helpers, filters }`.                                            |
 
 Runtime API after registration:
 
 - `fastify.viewHelpers.define(name, fn)`, `fastify.viewHelpers.get(name)`, `fastify.viewHelpers.remove(name)`
 - `fastify.viewFilters.define(name, fn)`, `fastify.viewFilters.get(name)`, `fastify.viewFilters.remove(name)`
-- `fastify.viewPartials.define(name, templateOrFn)`, `fastify.viewPartials.get(name)`, `fastify.viewPartials.remove(name)`
+- `fastify.viewPartials.define(name, templateOrFn)`, `fastify.viewPartials.get(name)`,
+  `fastify.viewPartials.remove(name)`
 - `fastify.viewCache.clear()`, `fastify.viewCache.stats()`
 
 These APIs are scope-aware:
@@ -123,8 +124,8 @@ These APIs are scope-aware:
 - In `global` mode they modify shared helpers/filters/partials.
 - In `scoped` mode they only affect the current plugin registration scope.
 
-The cache API is process-local and lets you invalidate compiled template/path caches at runtime when
-`cache: true` is used.
+The cache API is process-local and lets you invalidate compiled template/path caches at runtime when `cache: true` is
+used.
 
 Invalid option types are rejected at plugin registration time with descriptive errors.
 
@@ -132,8 +133,8 @@ Invalid option types are rejected at plugin registration time with descriptive e
 
 ### Layouts
 
-Layouts are wrappers for your page templates. The rendered page content is injected into the `body`
-variable within the layout.
+Layouts are wrappers for your page templates. The rendered page content is injected into the `body` variable within the
+layout.
 
 **`views/layouts/main.sqrl`**
 
@@ -146,8 +147,8 @@ variable within the layout.
     <body>
         <header>My Awesome Site</header>
         <main>
-            {{@block("content")}} {{@try}} {{it.body | safe}} {{#catch => err}} Uh-oh, error!
-            Message was '{{err.message}}' {{/try}} {{/block}}
+            {{@block("content")}} {{@try}} {{it.body | safe}} {{#catch => err}} Uh-oh, error! Message was
+            '{{err.message}}' {{/try}} {{/block}}
         </main>
     </body>
 </html>
@@ -191,9 +192,8 @@ You can specify a layout in three ways (in order of precedence):
 
 ### Partials
 
-Partials are reusable chunks of template code. Create a `partials` directory and place your files
-there. By default, partials are loaded recursively and registered by forward-slash path from the
-partials directory root.
+Partials are reusable chunks of template code. Create a `partials` directory and place your files there. By default,
+partials are loaded recursively and registered by forward-slash path from the partials directory root.
 
 **`partials/user-card.sqrl`**
 
@@ -258,8 +258,8 @@ fastify.register(squirrellyify, {
 
 ### Scoped Configuration (Encapsulation)
 
-This plugin supports Fastify's encapsulation model. You can register it multiple times with
-different settings for different route prefixes.
+This plugin supports Fastify's encapsulation model. You can register it multiple times with different settings for
+different route prefixes.
 
 ```javascript
 import Fastify from "fastify";
@@ -308,8 +308,7 @@ Use `sqrl.scope` to choose registration mode:
 - `global` (default): helpers, filters, and partials are shared across plugin registrations.
 - `scoped`: helpers, filters, and partials are isolated to each plugin registration.
 
-You can also add/remove helpers and filters at runtime via `fastify.viewHelpers` and
-`fastify.viewFilters`.
+You can also add/remove helpers and filters at runtime via `fastify.viewHelpers` and `fastify.viewFilters`.
 
 ```javascript
 fastify.register(squirrellyify, {

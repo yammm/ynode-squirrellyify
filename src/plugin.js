@@ -31,19 +31,14 @@ import fp from "fastify-plugin";
 import Sqrl from "squirrelly";
 
 import {
-    validatePluginOptions,
     resolveExtension,
     resolveInitialPartialsDirs,
     resolveInitialTemplateDirs,
     resolveSqrlConfig,
     resolveUseCache,
+    validatePluginOptions,
 } from "./config.js";
-import {
-    buildTemplateSearchDirs,
-    collectViewScope,
-    createTemplateResolver,
-    preloadPartials,
-} from "./resolver.js";
+import { buildTemplateSearchDirs, collectViewScope, createTemplateResolver, preloadPartials } from "./resolver.js";
 import { createRuntimeApi } from "./runtime-api.js";
 import { assertSafeName } from "./safety.js";
 
@@ -87,14 +82,7 @@ async function squirrellyify(fastify, options = {}) {
     const { extensionWithDot } = resolveExtension(options);
     const useCache = resolveUseCache(options);
     const { sqrlScope, sqrlConfig } = resolveSqrlConfig(options);
-    const {
-        defineSqrlHelper,
-        defineSqrlFilter,
-        defineSqrlTemplate,
-        viewHelpers,
-        viewFilters,
-        viewPartials,
-    } =
+    const { defineSqrlHelper, defineSqrlFilter, defineSqrlTemplate, viewHelpers, viewFilters, viewPartials } =
         createRuntimeApi({
             sqrlScope,
             sqrlConfig,
@@ -137,10 +125,8 @@ async function squirrellyify(fastify, options = {}) {
     async function view(template, data = {}) {
         try {
             const requestData = data && typeof data === "object" ? data : {};
-            const replyContext =
-                this.context && typeof this.context === "object" ? this.context : {};
-            const replyLocals =
-                this.locals && typeof this.locals === "object" ? this.locals : {};
+            const replyContext = this.context && typeof this.context === "object" ? this.context : {};
+            const replyLocals = this.locals && typeof this.locals === "object" ? this.locals : {};
             const mergedData = {
                 ...replyContext,
                 ...replyLocals,
@@ -154,17 +140,12 @@ async function squirrellyify(fastify, options = {}) {
 
             const instance = this.request.server;
             const { aggregatedTemplatesDirs, scopedLayout } = collectViewScope(instance);
-            const templateSearchDirs = buildTemplateSearchDirs(
-                aggregatedTemplatesDirs,
-                initialTemplatesDirs,
-            );
+            const templateSearchDirs = buildTemplateSearchDirs(aggregatedTemplatesDirs, initialTemplatesDirs);
 
             // 1. Find and render the page template
             const pagePath = await findTemplatePath(template, templateSearchDirs);
             if (!pagePath) {
-                throw new Error(
-                    `Template "${template}" not found in [${templateSearchDirs.join(", ")}]`,
-                );
+                throw new Error(`Template "${template}" not found in [${templateSearchDirs.join(", ")}]`);
             }
 
             const pageTemplate = await getTemplate(pagePath);
@@ -185,16 +166,12 @@ async function squirrellyify(fastify, options = {}) {
             // 3. Find and render the layout, injecting the page content
             const layoutPath = await findTemplatePath(layoutFile, templateSearchDirs);
             if (!layoutPath) {
-                throw new Error(
-                    `Layout "${layoutFile}" not found in [${templateSearchDirs.join(", ")}]`,
-                );
+                throw new Error(`Layout "${layoutFile}" not found in [${templateSearchDirs.join(", ")}]`);
             }
 
             const layoutTemplate = await getTemplate(layoutPath);
             const layoutPayload =
-                mergedData.layoutData && typeof mergedData.layoutData === "object"
-                    ? mergedData.layoutData
-                    : {};
+                mergedData.layoutData && typeof mergedData.layoutData === "object" ? mergedData.layoutData : {};
             const layoutData = { ...mergedData, ...layoutPayload, body: pageHtml };
             const finalHtml = await layoutTemplate(layoutData, sqrlConfig);
 
