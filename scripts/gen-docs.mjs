@@ -24,17 +24,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 /**
- * Generates a `jsdoc.json` configuration file dynamically from `package.json`
+ * Generates a JSDoc configuration file dynamically from `package.json`
  * and runs JSDoc to produce project documentation in the `docs/` directory.
  *
  * @module gen-docs
  * @main gen-docs
- * @version 1.0.0
- * @since 1.0.0
  */
 
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import process from "node:process";
 
@@ -49,37 +47,24 @@ const pkg = (await import(pkgPath, { with: { type: "json" } })).default;
 
 /**
  * Extracts metadata from the project's package.json for documentation generation.
- *
- * @property {string} name        Project name, defaults to "TODO: name".
- * @property {string} description Project description, defaults to "TODO: description".
- * @property {string} version     Project version string.
- * @property {string} url         Project homepage or empty string.
  */
 const name = pkg.name ?? "TODO: name";
 const description = pkg.description ?? "TODO: description";
 const version = pkg.version ?? "0.0.0";
 const url = (pkg.homepage ?? "").toString();
 
-/**
- * Ensures that the output directory for JSDoc exists.
- *
- * @property {string} outdir Path to the documentation output directory.
- */
 const outdir = "docs";
 if (!existsSync(outdir)) {
     mkdirSync(outdir, { recursive: true });
 }
 
-/**
- * Build the JSDoc configuration object from package.json metadata.
- *
- * @property {Object} jsdoc
- * @property {Object} jsdoc.opts Paths, output, and generation options for JSDoc.
- */
+const jsdocConfigPath = resolve(process.cwd(), ".jsdoc.generated.json");
 const jsdoc = {
     source: {
         include: ["src"],
         exclude: ["node_modules", ".git"],
+        includePattern: ".+\\.js$",
+        excludePattern: "(^|\\/|\\\\)(node_modules|docs|\\.git)(\\/|\\\\|$)",
     },
     opts: {
         destination: outdir,
@@ -102,21 +87,20 @@ const jsdoc = {
     },
 };
 
-/**
- * Write the configuration to `jsdoc.json` at the project root.
- *
- * @property {string} jsdocPath Full path to the generated JSDoc configuration file.
- */
-const jsdocPath = resolve(process.cwd(), "jsdoc.json");
-writeFileSync(jsdocPath, JSON.stringify(jsdoc, null, 4) + "\n", "utf8");
+writeFileSync(jsdocConfigPath, JSON.stringify(jsdoc, null, 4) + "\n", "utf8");
 
-/**
- * Executes JSDoc with the generated configuration.
- *
- * @method execFileSync
- * @param {string} "npx" - CLI command.
- * @param {Array<string>} ["jsdoc", "-c", "jsdoc.json"] - Command arguments to invoke JSDoc.
- * @param {Object} options - Subprocess options (inherit stdio for live output).
- * @return {void}
- */
-execFileSync("npx", ["jsdoc", "-c", "jsdoc.json"], { stdio: "inherit" });
+try {
+    const jsdocBin = resolve(process.cwd(), "node_modules", "jsdoc", "jsdoc.js");
+    if (!existsSync(jsdocBin)) {
+        throw new Error(
+            "JSDoc binary not found at node_modules/jsdoc/jsdoc.js. Run `npm install` to install dev dependencies.",
+        );
+    }
+
+    execFileSync(process.execPath, [jsdocBin, "-c", jsdocConfigPath], {
+        stdio: "inherit",
+    });
+} finally {
+    // Ensure cleanup of the temporary tracking configuration file
+    rmSync(jsdocConfigPath, { force: true });
+}
