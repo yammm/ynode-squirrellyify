@@ -74,7 +74,8 @@ async function squirrellyify(fastify, options = {}) {
         throw new Error("@ynode/squirrellyify has already been registered");
     }
 
-    const log = fastify.log.child({ name: "@ynode/squirrellyify" });
+    const log =
+        typeof fastify.log?.child === "function" ? fastify.log.child({ name: "@ynode/squirrellyify" }) : fastify.log;
 
     const initialTemplatesDirs = resolveInitialTemplateDirs(options);
     const initialPartialsDirs = resolveInitialPartialsDirs(options);
