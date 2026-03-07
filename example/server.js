@@ -1,6 +1,8 @@
-import Fastify from "fastify";
 import path from "node:path";
 import process from "node:process";
+
+import Fastify from "fastify";
+
 import squirrellyify from "../src/plugin.js";
 
 const app = Fastify({ logger: true });
