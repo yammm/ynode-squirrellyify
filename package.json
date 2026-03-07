@@ -58,6 +58,7 @@
         "access": "public"
     },
     "files": [
+        "index.d.ts",
         "src",
         "README.md",
         "LICENSE"
