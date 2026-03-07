@@ -79,6 +79,8 @@ async function squirrellyify(fastify, options = {}) {
         throw new Error("@ynode/squirrellyify has already been registered");
     }
 
+    const log = fastify.log.child({ name: "@ynode/squirrellyify" });
+
     const initialTemplatesDirs = resolveInitialTemplateDirs(options);
     const initialPartialsDirs = resolveInitialPartialsDirs(options);
     const initialLayout = options.layout;
@@ -198,7 +200,7 @@ async function squirrellyify(fastify, options = {}) {
 
             return this.type("text/html").send(finalHtml);
         } catch (error) {
-            this.request.server.log.error(error);
+            log.error(error);
             if (process.env.NODE_ENV === "production") {
                 // In production, send a generic error and don't leak details
                 this.status(500).send("An internal server error occurred.");
