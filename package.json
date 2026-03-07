@@ -65,7 +65,7 @@
         "fastify-plugin": "^5.1.0"
     },
     "peerDependencies": {
-        "fastify": "^5.0.0",
+        "fastify": "5.x",
         "squirrelly": "^9.1.0"
     }
 }
