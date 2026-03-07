@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 #
-# Copyright (c) 2025 Michael Welter <me@mikinho.com>
+# Copyright (c) 2026 Michael Welter <me@mikinho.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,7 +26,4 @@
 # Git pre-commit hook
 #
 
-set -euo pipefail
-
-REPO_ROOT="$(git rev-parse --show-toplevel)"
-node "${REPO_ROOT}/scripts/lint-staged.mjs"
+npx eslint --no-warn-ignored $(git diff --cached --name-only --diff-filter=ACMRTUXB | tr '\n' ' ')
