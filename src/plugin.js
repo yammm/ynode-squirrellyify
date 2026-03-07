@@ -38,7 +38,12 @@ import {
     resolveUseCache,
     validatePluginOptions,
 } from "./config.js";
-import { buildTemplateSearchDirs, collectViewScope, createTemplateResolver, preloadPartials } from "./resolver.js";
+import {
+    buildTemplateSearchDirs,
+    collectViewScope,
+    createTemplateResolver,
+    preloadPartials,
+} from "./resolver.js";
 import { createRuntimeApi } from "./runtime-api.js";
 import { assertSafeName } from "./safety.js";
 
@@ -75,7 +80,9 @@ async function squirrellyify(fastify, options = {}) {
     }
 
     const log =
-        typeof fastify.log?.child === "function" ? fastify.log.child({ name: "@ynode/squirrellyify" }) : fastify.log;
+        typeof fastify.log?.child === "function"
+            ? fastify.log.child({ name: "@ynode/squirrellyify" })
+            : fastify.log;
 
     const initialTemplatesDirs = resolveInitialTemplateDirs(options);
     const initialPartialsDirs = resolveInitialPartialsDirs(options);
@@ -83,11 +90,17 @@ async function squirrellyify(fastify, options = {}) {
     const { extensionWithDot } = resolveExtension(options);
     const useCache = resolveUseCache(options);
     const { sqrlScope, sqrlConfig } = resolveSqrlConfig(options);
-    const { defineSqrlHelper, defineSqrlFilter, defineSqrlTemplate, viewHelpers, viewFilters, viewPartials } =
-        createRuntimeApi({
-            sqrlScope,
-            sqrlConfig,
-        });
+    const {
+        defineSqrlHelper,
+        defineSqrlFilter,
+        defineSqrlTemplate,
+        viewHelpers,
+        viewFilters,
+        viewPartials,
+    } = createRuntimeApi({
+        sqrlScope,
+        sqrlConfig,
+    });
 
     if (options.sqrl?.helpers) {
         Object.entries(options.sqrl.helpers).forEach(([name, fn]) => {
@@ -110,12 +123,13 @@ async function squirrellyify(fastify, options = {}) {
         sqrlConfig,
     });
 
-    const { findTemplatePath, getTemplate, hasLayoutTag, clearCaches, cacheStats } = createTemplateResolver({
-        fastify,
-        extensionWithDot,
-        useCache,
-        sqrlConfig,
-    });
+    const { findTemplatePath, getTemplate, hasLayoutTag, clearCaches, cacheStats } =
+        createTemplateResolver({
+            fastify,
+            extensionWithDot,
+            useCache,
+            sqrlConfig,
+        });
 
     /**
      * Renders a Squirrelly template and sends it as an HTML response.
@@ -126,7 +140,8 @@ async function squirrellyify(fastify, options = {}) {
     async function view(template, data = {}) {
         try {
             const requestData = data && typeof data === "object" ? data : {};
-            const replyContext = this.context && typeof this.context === "object" ? this.context : {};
+            const replyContext =
+                this.context && typeof this.context === "object" ? this.context : {};
             const replyLocals = this.locals && typeof this.locals === "object" ? this.locals : {};
             const mergedData = {
                 ...replyContext,
@@ -141,12 +156,17 @@ async function squirrellyify(fastify, options = {}) {
 
             const instance = this.request.server;
             const { aggregatedTemplatesDirs, scopedLayout } = collectViewScope(instance);
-            const templateSearchDirs = buildTemplateSearchDirs(aggregatedTemplatesDirs, initialTemplatesDirs);
+            const templateSearchDirs = buildTemplateSearchDirs(
+                aggregatedTemplatesDirs,
+                initialTemplatesDirs,
+            );
 
             // 1. Find and render the page template
             const pagePath = await findTemplatePath(template, templateSearchDirs);
             if (!pagePath) {
-                throw new Error(`Template "${template}" not found in [${templateSearchDirs.join(", ")}]`);
+                throw new Error(
+                    `Template "${template}" not found in [${templateSearchDirs.join(", ")}]`,
+                );
             }
 
             const pageTemplate = await getTemplate(pagePath);
@@ -154,7 +174,8 @@ async function squirrellyify(fastify, options = {}) {
 
             // 2. Determine which layout to use
             const currentLayout = scopedLayout !== null ? scopedLayout : initialLayout;
-            const layoutFile = mergedData.layout === false ? null : mergedData.layout || currentLayout;
+            const layoutFile =
+                mergedData.layout === false ? null : mergedData.layout || currentLayout;
 
             if (!layoutFile) {
                 return this.type("text/html").send(pageHtml);
@@ -167,12 +188,16 @@ async function squirrellyify(fastify, options = {}) {
             // 3. Find and render the layout, injecting the page content
             const layoutPath = await findTemplatePath(layoutFile, templateSearchDirs);
             if (!layoutPath) {
-                throw new Error(`Layout "${layoutFile}" not found in [${templateSearchDirs.join(", ")}]`);
+                throw new Error(
+                    `Layout "${layoutFile}" not found in [${templateSearchDirs.join(", ")}]`,
+                );
             }
 
             const layoutTemplate = await getTemplate(layoutPath);
             const layoutPayload =
-                mergedData.layoutData && typeof mergedData.layoutData === "object" ? mergedData.layoutData : {};
+                mergedData.layoutData && typeof mergedData.layoutData === "object"
+                    ? mergedData.layoutData
+                    : {};
             const layoutData = { ...mergedData, ...layoutPayload, body: pageHtml };
             const finalHtml = await layoutTemplate(layoutData, sqrlConfig);
 
@@ -186,6 +211,15 @@ async function squirrellyify(fastify, options = {}) {
                 // In development, it's okay to send the detailed error
                 this.code(500).send(error);
             }
+        }
+    }
+
+    // Pre-decorate context for V8 optimization performance in consumers
+    try {
+        fastify.decorateReply("context", null);
+    } catch (err) {
+        if (err.code !== "FST_ERR_DEC_ALREADY_PRESENT") {
+            throw err;
         }
     }
 
