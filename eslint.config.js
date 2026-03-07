@@ -49,7 +49,7 @@ export default defineConfig([
             "prefer-const": ["error", { destructuring: "all" }],
             "no-unused-vars": ["error", { args: "none", ignoreRestSiblings: true }],
             "no-implicit-coercion": ["warn", { allow: ["!!"] }],
-            "no-console": ["warn", { allow: ["log", "warn", "error"] }],
+            "no-console": "off",
             // "array-bracket-spacing": ["error", "always"], // conflicts with prettier
             // indent: ["error", 4, { SwitchCase: 1 }], // conflicts with prettier
             semi: ["error", "always"],
