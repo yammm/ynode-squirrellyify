@@ -5,9 +5,13 @@
     </head>
     <body>
         <main>
-            {{@if(it.body)}}
-                {{ it.body | safe }}
-            {{/if}}
+            {{@ block("content") }}
+            {{@ try }}
+            {{ it.body | safe }}
+            {{# catch => err }}
+            Uh-oh, error! Message was '{{ err.message }}'
+            {{/ try }}
+            {{/ block }}
         </main>
     </body>
 </html>
