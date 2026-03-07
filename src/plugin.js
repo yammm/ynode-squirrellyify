@@ -75,6 +75,10 @@ import { assertSafeName } from "./safety.js";
 async function squirrellyify(fastify, options = {}) {
     validatePluginOptions(options);
 
+    if (typeof fastify.hasDecorator === "function" && fastify.hasDecorator("Sqrl")) {
+        throw new Error("@ynode/squirrellyify has already been registered");
+    }
+
     const initialTemplatesDirs = resolveInitialTemplateDirs(options);
     const initialPartialsDirs = resolveInitialPartialsDirs(options);
     const initialLayout = options.layout;
