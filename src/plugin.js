@@ -223,6 +223,10 @@ async function squirrellyify(fastify, options = {}) {
         }
     }
 
+    fastify.addHook("onRequest", async (request, reply) => {
+        reply.context = {};
+    });
+
     // Decorate the reply object with the main view function
     fastify.decorateReply("view", view);
 
