@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>{{ it.title }}</title>
+    </head>
+    <body>
+        <main>
+            {{@if(it.body)}}
+                {{ it.body | safe }}
+            {{/if}}
+        </main>
+    </body>
+</html>
