@@ -18,7 +18,7 @@ app.get("/", async function (request, reply) {
     // Render the `index.sqrl` template nested within `example/views/`
     return reply.view("index", {
         title: "@ynode/squirrellyify Demo",
-        message: "Hello from Squirrelly templates!"
+        message: "Hello from Squirrelly templates!",
     });
 });
 

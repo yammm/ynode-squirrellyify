@@ -21,7 +21,11 @@ export function assertSafeName(name) {
     if (normalized.startsWith("../")) {
         throw new Error(`Illegal template name: ${name}`);
     }
-    if (name.split("/").some((segment) => segment.length === 0 || segment === "." || segment === "..")) {
+    if (
+        name
+            .split("/")
+            .some((segment) => segment.length === 0 || segment === "." || segment === "..")
+    ) {
         throw new Error(`Illegal template name: ${name}`);
     }
 }

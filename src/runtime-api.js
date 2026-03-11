@@ -39,7 +39,8 @@ export function createRuntimeApi({ sqrlScope, sqrlConfig }) {
     }
 
     function defineSqrlTemplate(name, template) {
-        const compiled = typeof template === "function" ? template : Sqrl.compile(String(template), sqrlConfig);
+        const compiled =
+            typeof template === "function" ? template : Sqrl.compile(String(template), sqrlConfig);
         templatesStore.define(name, compiled);
         return compiled;
     }
