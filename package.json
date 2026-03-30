@@ -1,6 +1,6 @@
 {
     "name": "@ynode/squirrellyify",
-    "version": "1.7.1",
+    "version": "1.7.2",
     "description": "Fastify 5 plugin for rendering Squirrelly templates with layout support, partials, and scoped configuration.",
     "main": "src/plugin.js",
     "type": "module",
