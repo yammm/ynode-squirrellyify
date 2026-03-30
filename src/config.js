@@ -2,20 +2,42 @@ import path from "node:path";
 
 import Sqrl from "squirrelly";
 
+/**
+ * Checks whether a value is a plain object (not null, not an array).
+ * @param {*} value - Value to test.
+ * @returns {boolean}
+ */
 function isPlainObject(value) {
     return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+/**
+ * Checks whether a value is an array where every element is a string.
+ * @param {*} value - Value to test.
+ * @returns {boolean}
+ */
 function isStringArray(value) {
     return Array.isArray(value) && value.every((entry) => typeof entry === "string");
 }
 
+/**
+ * Throws a TypeError when a plugin option fails validation.
+ * @param {boolean} condition - Validation result.
+ * @param {string} message - Error message.
+ * @throws {TypeError} When condition is falsy.
+ */
 function assertOptionType(condition, message) {
     if (!condition) {
         throw new TypeError(message);
     }
 }
 
+/**
+ * Strips leading dots from a file extension and validates it is non-empty.
+ * @param {string} defaultExtension - Raw extension string from options.
+ * @returns {string} Normalized extension without leading dots.
+ * @throws {TypeError} When the extension contains only dot characters.
+ */
 function normalizeDefaultExtension(defaultExtension) {
     const normalized = defaultExtension.replace(/^\.+/, "");
     if (normalized.length === 0) {
@@ -26,6 +48,11 @@ function normalizeDefaultExtension(defaultExtension) {
     return normalized;
 }
 
+/**
+ * Validates all plugin options, throwing TypeError on invalid values.
+ * @param {object} [options] - Plugin options to validate.
+ * @throws {TypeError} When any option has an invalid type or value.
+ */
 export function validatePluginOptions(options = {}) {
     assertOptionType(
         isPlainObject(options),
@@ -118,6 +145,12 @@ export function validatePluginOptions(options = {}) {
     }
 }
 
+/**
+ * Resolves the initial template directories from plugin options.
+ * Defaults to `[path.join(cwd, "views")]` when no templates option is provided.
+ * @param {object} [options] - Plugin options.
+ * @returns {string[]} Array of template directory paths.
+ */
 export function resolveInitialTemplateDirs(options = {}) {
     return Array.isArray(options.templates)
         ? options.templates
@@ -126,6 +159,12 @@ export function resolveInitialTemplateDirs(options = {}) {
           : [path.join(process.cwd(), "views")];
 }
 
+/**
+ * Resolves the initial partials directories from plugin options.
+ * Returns an empty array when no partials option is provided.
+ * @param {object} [options] - Plugin options.
+ * @returns {string[]} Array of partial directory paths.
+ */
 export function resolveInitialPartialsDirs(options = {}) {
     return Array.isArray(options.partials)
         ? options.partials
@@ -134,6 +173,11 @@ export function resolveInitialPartialsDirs(options = {}) {
           : [];
 }
 
+/**
+ * Resolves and normalizes the default template file extension.
+ * @param {object} [options] - Plugin options.
+ * @returns {{ defaultExtension: string, extensionWithDot: string }} Normalized extension pair.
+ */
 export function resolveExtension(options = {}) {
     const defaultExtension =
         options.defaultExtension !== undefined
@@ -145,10 +189,23 @@ export function resolveExtension(options = {}) {
     };
 }
 
+/**
+ * Determines whether template caching should be enabled.
+ * Defaults to true when NODE_ENV is "production".
+ * @param {object} [options] - Plugin options.
+ * @returns {boolean} Whether to cache compiled templates.
+ */
 export function resolveUseCache(options = {}) {
     return options.cache ?? process.env.NODE_ENV === "production";
 }
 
+/**
+ * Creates an isolated Squirrelly configuration with its own helpers, filters,
+ * and templates storage, seeded with Squirrelly's built-in helpers and the
+ * default "e" (escape) filter so core template features still work.
+ * @param {object} [baseConfig] - Base Squirrelly config overrides.
+ * @returns {object} Scoped Squirrelly configuration object.
+ */
 function createScopedSqrlConfig(baseConfig) {
     const Cacher = Sqrl.helpers?.constructor;
     if (typeof Cacher !== "function") {
@@ -159,6 +216,9 @@ function createScopedSqrlConfig(baseConfig) {
     const scopedFilters = new Cacher({});
     const scopedTemplates = new Cacher({});
 
+    // Copy Squirrelly's built-in helpers into the scoped storage so templates
+    // retain core functionality (iteration, includes, layout extends) even
+    // when running in isolated "scoped" mode.
     for (const helperName of [
         "each",
         "foreach",
@@ -193,6 +253,12 @@ function createScopedSqrlConfig(baseConfig) {
     );
 }
 
+/**
+ * Resolves the Squirrelly engine configuration, creating isolated scoped storage
+ * when `sqrl.scope` is "scoped" or using the global Sqrl instance otherwise.
+ * @param {object} [options] - Plugin options.
+ * @returns {{ sqrlScope: "global"|"scoped", sqrlConfig: object }} Resolved scope and config.
+ */
 export function resolveSqrlConfig(options = {}) {
     const sqrlScope = options.sqrl?.scope === "scoped" ? "scoped" : "global";
     const sqrlConfig =

@@ -3,10 +3,21 @@ import path from "node:path";
 
 import Sqrl from "squirrelly";
 
+/**
+ * Strips leading and trailing forward slashes from a string.
+ * @param {string} value - Input string.
+ * @returns {string} Trimmed string.
+ */
 function trimSlashes(value) {
     return value.replace(/^\/+|\/+$/g, "");
 }
 
+/**
+ * Resolves the namespace prefix for partial templates.
+ * @param {boolean|string} partialsNamespace - Namespace setting (true = dir basename, string = literal).
+ * @param {string} partialsDir - Partials directory path (used when namespace is `true`).
+ * @returns {string} Resolved namespace prefix, or empty string for no namespace.
+ */
 function resolvePartialsNamespace(partialsNamespace, partialsDir) {
     if (!partialsNamespace) {
         return "";
@@ -20,6 +31,13 @@ function resolvePartialsNamespace(partialsNamespace, partialsDir) {
     return "";
 }
 
+/**
+ * Recursively collects all template files matching the given extension from a directory.
+ * @param {string} dir - Directory to scan.
+ * @param {string} extensionWithDot - File extension to match (e.g. ".sqrl").
+ * @param {boolean} recursive - Whether to descend into subdirectories.
+ * @returns {Promise<string[]>} Array of absolute file paths.
+ */
 async function collectPartialFiles(dir, extensionWithDot, recursive) {
     const entries = await fs.readdir(dir, { withFileTypes: true });
     const files = [];
@@ -40,6 +58,14 @@ async function collectPartialFiles(dir, extensionWithDot, recursive) {
     return files;
 }
 
+/**
+ * Derives the Squirrelly partial name from a file path, relative to its partials directory.
+ * @param {string} partialPath - Absolute path to the partial file.
+ * @param {string} partialsDir - Base partials directory.
+ * @param {string} extensionWithDot - File extension to strip (e.g. ".sqrl").
+ * @param {string} namespace - Optional namespace prefix.
+ * @returns {string} Partial name suitable for Sqrl.templates.define().
+ */
 function resolvePartialName(partialPath, partialsDir, extensionWithDot, namespace) {
     const relativePath = path.relative(partialsDir, partialPath);
     const withoutExt = relativePath.slice(0, -extensionWithDot.length);

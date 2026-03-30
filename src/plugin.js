@@ -103,14 +103,14 @@ async function squirrellyify(fastify, options = {}) {
     });
 
     if (options.sqrl?.helpers) {
-        Object.entries(options.sqrl.helpers).forEach(([name, fn]) => {
+        for (const [name, fn] of Object.entries(options.sqrl.helpers)) {
             defineSqrlHelper(name, fn);
-        });
+        }
     }
     if (options.sqrl?.filters) {
-        Object.entries(options.sqrl.filters).forEach(([name, fn]) => {
+        for (const [name, fn] of Object.entries(options.sqrl.filters)) {
             defineSqrlFilter(name, fn);
-        });
+        }
     }
 
     await preloadPartials({
@@ -172,8 +172,9 @@ async function squirrellyify(fastify, options = {}) {
             const pageTemplate = await getTemplate(pagePath);
             const pageHtml = await pageTemplate(mergedData, sqrlConfig);
 
-            // 2. Determine which layout to use
-            const currentLayout = scopedLayout !== null ? scopedLayout : initialLayout;
+            // 2. Determine which layout to use.
+            // Layout precedence: route data (layout: false) > reply scoped > plugin default
+            const currentLayout = scopedLayout ?? initialLayout;
             const layoutFile =
                 mergedData.layout === false ? null : mergedData.layout || currentLayout;
 
