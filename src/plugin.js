@@ -7,7 +7,7 @@
 /*
 The MIT License (MIT)
 
-Copyright (c) 2025 Michael Welter <me@mikinho.com>
+Copyright (c) 2026 Michael Welter <me@mikinho.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in
@@ -210,7 +210,7 @@ async function squirrellyify(fastify, options = {}) {
                 this.status(500).send("An internal server error occurred.");
             } else {
                 // In development, it's okay to send the detailed error
-                this.code(500).send(error);
+                this.status(500).send(error);
             }
         }
     }
