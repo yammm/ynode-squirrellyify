@@ -4,8 +4,10 @@ import path from "node:path";
  * Allow nested forward-slash paths (e.g. "admin/dashboard"), but block traversal
  * or absolute paths.
  *
- * @param {string} name
- * @return {void}
+ * @param {string} name - Template name to validate.
+ * @returns {void}
+ * @throws {Error} If the name is empty, absolute, contains a null byte, uses
+ *   backslashes, normalizes to `.`/`..`, or contains empty/dot/dotdot segments.
  */
 export function assertSafeName(name) {
     if (typeof name !== "string" || name.length === 0 || name.includes("\0")) {

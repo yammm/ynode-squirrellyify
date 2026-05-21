@@ -82,7 +82,7 @@ function resolvePartialName(partialPath, partialsDir, extensionWithDot, namespac
  * @param {boolean} [options.partialsRecursive=true]
  * @param {boolean|string} [options.partialsNamespace=false]
  * @param {object} options.fastify
- * @param {Function} options.defineSqrlTemplate
+ * @param {function(string, *): void} options.defineSqrlTemplate
  * @param {object} options.sqrlConfig
  * @returns {Promise<void>}
  */
@@ -187,6 +187,16 @@ export function createTemplateResolver({ fastify, extensionWithDot, useCache, sq
     const pathCache = new Map();
     const templateMeta = new Map();
 
+    function compileAndCache(fullPath, content) {
+        const compiled = Sqrl.compile(content, sqrlConfig);
+        const hasLayoutTag = /{{\s*(?:@\s*extends|!layout)\s*\(/.test(content);
+        templateMeta.set(fullPath, { hasLayoutTag });
+        if (useCache) {
+            templateCache.set(fullPath, compiled);
+        }
+        return compiled;
+    }
+
     async function findTemplatePath(templateName, searchDirs) {
         const templateFile = `${templateName}${extensionWithDot}`;
         const cacheKey = `${searchDirs.join(";")}:${templateFile}`;
@@ -197,15 +207,26 @@ export function createTemplateResolver({ fastify, extensionWithDot, useCache, sq
 
         for (const dir of searchDirs) {
             const fullPath = path.join(dir, templateFile);
+            // A single read attempt — ENOENT means "not in this dir, try
+            // the next." Any other error (EACCES, EMFILE, EISDIR, ENOTDIR,
+            // etc.) propagates instead of being silently treated as
+            // "missing", and there is no access-then-read TOCTOU window
+            // where a symlink swap could substitute arbitrary content.
+            let content;
             try {
-                await fs.access(fullPath);
-                if (useCache) {
-                    pathCache.set(cacheKey, fullPath);
+                content = await fs.readFile(fullPath, "utf-8");
+            } catch (err) {
+                if (err?.code === "ENOENT") {
+                    continue;
                 }
-                return fullPath;
-            } catch (error) {
-                fastify.log.trace(error);
+                throw err;
             }
+
+            compileAndCache(fullPath, content);
+            if (useCache) {
+                pathCache.set(cacheKey, fullPath);
+            }
+            return fullPath;
         }
 
         return null;
@@ -216,16 +237,11 @@ export function createTemplateResolver({ fastify, extensionWithDot, useCache, sq
             return templateCache.get(templatePath);
         }
 
+        // Cache miss path. ENOENT here means the file disappeared between
+        // findTemplatePath returning and getTemplate being called — surface
+        // it instead of swallowing.
         const content = await fs.readFile(templatePath, "utf-8");
-        const compiled = Sqrl.compile(content, sqrlConfig);
-        const hasLayoutTag = /{{\s*(?:@\s*extends|!layout)\s*\(/.test(content);
-        templateMeta.set(templatePath, { hasLayoutTag });
-
-        if (useCache) {
-            templateCache.set(templatePath, compiled);
-        }
-
-        return compiled;
+        return compileAndCache(templatePath, content);
     }
 
     function hasLayoutTag(templatePath) {
