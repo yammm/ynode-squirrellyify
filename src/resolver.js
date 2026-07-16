@@ -102,19 +102,10 @@ export async function preloadPartials({
     for (const partialsDir of partialsDirs) {
         try {
             const namespace = resolvePartialsNamespace(partialsNamespace, partialsDir);
-            const files = await collectPartialFiles(
-                partialsDir,
-                extensionWithDot,
-                partialsRecursive,
-            );
+            const files = await collectPartialFiles(partialsDir, extensionWithDot, partialsRecursive);
             await Promise.all(
                 files.map(async (partialPath) => {
-                    const partialName = resolvePartialName(
-                        partialPath,
-                        partialsDir,
-                        extensionWithDot,
-                        namespace,
-                    );
+                    const partialName = resolvePartialName(partialPath, partialsDir, extensionWithDot, namespace);
                     const content = await fs.readFile(partialPath, "utf-8");
                     fastify.log.trace(`Loaded partial: ${partialName}`);
                     defineSqrlTemplate(partialName, Sqrl.compile(content, sqrlConfig));
@@ -140,16 +131,10 @@ export function collectViewScope(instance) {
 
     while (currentInstance) {
         if (currentInstance.views) {
-            const dirs = Array.isArray(currentInstance.views)
-                ? currentInstance.views
-                : [currentInstance.views];
+            const dirs = Array.isArray(currentInstance.views) ? currentInstance.views : [currentInstance.views];
             aggregatedTemplatesDirs.push(...dirs);
         }
-        if (
-            scopedLayout === null &&
-            currentInstance.layout !== null &&
-            currentInstance.layout !== undefined
-        ) {
+        if (scopedLayout === null && currentInstance.layout !== null && currentInstance.layout !== undefined) {
             scopedLayout = currentInstance.layout;
         }
         currentInstance = currentInstance.parent ?? null;
@@ -191,9 +176,12 @@ export function createTemplateResolver({ fastify, extensionWithDot, useCache, sq
         const compiled = Sqrl.compile(content, sqrlConfig);
         const hasLayoutTag = /{{\s*(?:@\s*extends|!layout)\s*\(/.test(content);
         templateMeta.set(fullPath, { hasLayoutTag });
-        if (useCache) {
-            templateCache.set(fullPath, compiled);
-        }
+        // Always retain the compiled template. With caching disabled the
+        // path cache stays off, so every request still re-reads the file
+        // through findTemplatePath and recompiles it — this entry simply
+        // hands that fresh result to the getTemplate call that follows,
+        // instead of paying a second read and compile of the same file.
+        templateCache.set(fullPath, compiled);
         return compiled;
     }
 
@@ -233,7 +221,7 @@ export function createTemplateResolver({ fastify, extensionWithDot, useCache, sq
     }
 
     async function getTemplate(templatePath) {
-        if (useCache && templateCache.has(templatePath)) {
+        if (templateCache.has(templatePath)) {
             return templateCache.get(templatePath);
         }
 
