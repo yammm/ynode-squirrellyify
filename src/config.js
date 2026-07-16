@@ -3,6 +3,13 @@ import path from "node:path";
 import Sqrl from "squirrelly";
 
 /**
+ * A partials directory with an optional namespace override.
+ * @typedef {object} PartialsDirEntry
+ * @property {string} dir - Directory where partial templates are stored.
+ * @property {boolean|string} [namespace] - Namespace override for this directory.
+ */
+
+/**
  * Checks whether a value is a plain object (not null, not an array).
  * @param {*} value - Value to test.
  * @returns {boolean}
@@ -190,7 +197,7 @@ export function resolveInitialTemplateDirs(options = {}) {
  * `partialsNamespace` option at preload time.
  * Returns an empty array when no partials option is provided.
  * @param {object} [options] - Plugin options.
- * @returns {{ dir: string, namespace?: boolean|string }[]} Normalized partials entries.
+ * @returns {PartialsDirEntry[]} Normalized partials entries.
  */
 export function resolveInitialPartialsEntries(options = {}) {
     const raw = Array.isArray(options.partials)

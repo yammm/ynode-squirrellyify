@@ -60,7 +60,7 @@ import { assertSafeName } from "./safety.js";
  * @param {FastifyInstance} fastify The Fastify instance.
  * @param {object} options Plugin options.
  * @param {string|string[]} [options.templates] The directory or directories where page and layout templates are stored. Defaults to "views". Directories are searched in order.
- * @param {string|Array<string|{dir: string, namespace?: boolean|string}>} [options.partials] The directory or directories where partial templates are stored. Array entries may be `{ dir, namespace }` objects to namespace one directory independently.
+ * @param {string|Array<string|PartialsDirEntry>} [options.partials] The directory or directories where partial templates are stored. Array entries may be `{ dir, namespace }` objects to namespace one directory independently.
  * @param {boolean} [options.partialsRecursive=true] Enables recursive loading of partial templates from subdirectories.
  * @param {boolean|string} [options.partialsNamespace=false] Optional namespace prefix for partial names. Use `true` to namespace by partials directory basename. Entries with their own `namespace` override this per directory.
  * @param {string} [options.layout] The name of the default layout file to use (without extension).

@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import process from "node:process";
 
@@ -53,10 +53,9 @@ const description = pkg.description ?? "TODO: description";
 const version = pkg.version ?? "0.0.0";
 const url = (pkg.homepage ?? "").toString();
 
-const outdir = "docs";
-if (!existsSync(outdir)) {
-    mkdirSync(outdir, { recursive: true });
-}
+const outdir = resolve(process.cwd(), "docs");
+const temporaryOutdir = mkdtempSync(resolve(process.cwd(), ".docs-"));
+const checkOnly = process.argv.includes("--check");
 
 const jsdocConfigPath = resolve(process.cwd(), ".jsdoc.generated.json");
 const jsdoc = {
@@ -67,7 +66,7 @@ const jsdoc = {
         excludePattern: "(^|\\/|\\\\)(node_modules|docs|\\.git)(\\/|\\\\|$)",
     },
     opts: {
-        destination: outdir,
+        destination: temporaryOutdir,
         recurse: true,
         readme: "README.md",
         encoding: "utf8",
@@ -87,9 +86,9 @@ const jsdoc = {
     },
 };
 
-writeFileSync(jsdocConfigPath, JSON.stringify(jsdoc, null, 4) + "\n", "utf8");
-
 try {
+    writeFileSync(jsdocConfigPath, JSON.stringify(jsdoc, null, 4) + "\n", "utf8");
+
     const jsdocBin = resolve(process.cwd(), "node_modules", "jsdoc", "jsdoc.js");
     if (!existsSync(jsdocBin)) {
         throw new Error(
@@ -100,7 +99,12 @@ try {
     execFileSync(process.execPath, [jsdocBin, "-c", jsdocConfigPath], {
         stdio: "inherit",
     });
+
+    if (!checkOnly) {
+        rmSync(outdir, { recursive: true, force: true });
+        renameSync(temporaryOutdir, outdir);
+    }
 } finally {
-    // Ensure cleanup of the temporary tracking configuration file
     rmSync(jsdocConfigPath, { force: true });
+    rmSync(temporaryOutdir, { recursive: true, force: true });
 }

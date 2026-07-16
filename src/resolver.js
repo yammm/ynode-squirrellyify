@@ -80,7 +80,7 @@ function resolvePartialName(partialPath, partialsDir, extensionWithDot, namespac
  * `partialsNamespace` setting for that directory only.
  *
  * @param {object} options
- * @param {{ dir: string, namespace?: boolean|string }[]} options.partialsEntries
+ * @param {PartialsDirEntry[]} options.partialsEntries
  * @param {string} options.extensionWithDot
  * @param {boolean} [options.partialsRecursive=true]
  * @param {boolean|string} [options.partialsNamespace=false]
