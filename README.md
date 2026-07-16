@@ -182,6 +182,22 @@ Paths in the config resolve from the config file's directory. Add the compiler t
 }
 ```
 
+Each built module emits three artifacts by default:
+
+- `history.js`, the self-contained browser module.
+- `history.d.ts`, a declaration whose renderer names and sync or async return types match the module.
+- `history.js.map`, a source map that maps generated template operations back to their original `.sqrl` tags and embeds template source content.
+
+Set `declaration: false` or `sourceMap: false` on a module to disable an artifact. A non-empty path writes that artifact to a custom location. Repeated builds compare complete contents and leave unchanged files untouched.
+
+Use check mode in CI to verify committed generated artifacts without replacing them:
+
+```shell
+squirrellyify-client --check build/squirrelly-client.config.mjs
+```
+
+The programmatic equivalent is `buildClientModules({ ...config, check: true })`. It rejects with `ERR_CLIENT_MODULES_OUT_OF_DATE` and a `stale` path list when an artifact differs or is missing.
+
 The programmatic build API accepts the same object and returns metadata for every generated file:
 
 ```javascript
@@ -220,9 +236,41 @@ const source = await compileClientModule({
 });
 ```
 
-Templates in the same module may include one another by name. `if`, `elif`, `else`, `try`, `each`, `foreach`, `include`, and `useScope` are available. Use `{{# elif(condition) }}` for else-if branches; invalid `elseif` and `elf` spellings fail the build. Layout inheritance, file includes, asynchronous rendering, `useWith`, and compiler plugins are intentionally rejected for client modules.
+Templates in the same module may include one another by name. `if`, `elif`, `else`, `try`, `each`, `foreach`, `include`, and `useScope` are available. Use `{{# elif(condition) }}` for else-if branches; invalid `elseif` and `elf` spellings fail the build. Layout inheritance, file includes, `useWith`, and compiler plugins are intentionally rejected for client modules.
 
-Custom helpers and filters are serialized into the generated module. They must be pure, synchronous, browser-safe functions and cannot reference Node APIs or closed-over values. Built-in escaping and runtime helpers cannot be overridden.
+Custom helpers and filters are serialized into the generated module. Normal functions, method shorthand, and arrow functions are supported. They must be pure, browser-safe, and cannot reference Node APIs or closed-over values. Classes, generators, accessors, computed methods, native or bound functions, and built-in runtime overrides are rejected.
+
+### Async Client Modules
+
+Async rendering is explicit at the module level. Set `config.async: true` and use Squirrelly's `async` marker at every asynchronous call site:
+
+```javascript
+const source = await compileClientModule({
+    config: { async: true },
+    templates: {
+        rows: `
+            {{@ async each(it.rows) => row }}
+                <li>{{ row.accountId | async accountName }}</li>
+            {{/ each }}
+        `,
+    },
+    filters: {
+        async accountName(accountId) {
+            const response = await fetch(`/api/accounts/${encodeURIComponent(accountId)}`);
+            const account = await response.json();
+            return account.name;
+        },
+    },
+});
+```
+
+Every renderer in an async module consistently returns `Promise<string>`, including templates that contain no asynchronous operations:
+
+```javascript
+tbody.innerHTML = await history.render.rows(response);
+```
+
+Mark async helpers as `{{@ async helper(...) /}}`. In an async module, includes use `{{@ async include("row", data) /}}`. A block helper such as `each`, `foreach`, or `useScope` must also be marked async when its body performs async rendering. Missing markers fail compilation with a targeted error instead of producing a browser syntax error or rendering a Promise as text.
 
 ## Advanced Usage
 

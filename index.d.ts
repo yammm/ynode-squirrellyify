@@ -1,22 +1,25 @@
 import type { FastifyPluginAsync } from "fastify";
 
 export type ClientTemplateInput =
-    | string
-    | { source: string; file?: never }
-    | { file: string; source?: never };
+    string | { source: string; file?: never } | { file: string; source?: never };
+
+export interface ClientCompileConfig extends Record<string, unknown> {
+    /** Make every generated renderer return `Promise<string>`. @default false */
+    async?: boolean;
+}
 
 export interface CompileClientModuleOptions {
     /** Named templates exposed as properties on the generated `render` object. */
     templates: Record<string, ClientTemplateInput>;
 
-    /** Pure, synchronous, browser-safe custom Squirrelly helpers. */
-    helpers?: Record<string, (...args: unknown[]) => unknown>;
+    /** Pure, browser-safe custom Squirrelly helpers. Async helpers require `config.async`. */
+    helpers?: Record<string, (...args: unknown[]) => unknown | Promise<unknown>>;
 
-    /** Pure, synchronous, browser-safe custom Squirrelly filters. */
-    filters?: Record<string, (...args: unknown[]) => unknown>;
+    /** Pure, browser-safe custom Squirrelly filters. Async filters require `config.async`. */
+    filters?: Record<string, (...args: unknown[]) => unknown | Promise<unknown>>;
 
-    /** Supported synchronous Squirrelly compile configuration overrides. */
-    config?: Record<string, unknown>;
+    /** Supported Squirrelly compile configuration overrides, including explicit async mode. */
+    config?: ClientCompileConfig;
 }
 
 /** Compile named Squirrelly templates into one self-contained browser ES module. */
@@ -25,6 +28,12 @@ export function compileClientModule(options: CompileClientModuleOptions): Promis
 export interface BuildClientModuleInput extends CompileClientModuleOptions {
     /** Process- or build-config-relative generated ES module path. */
     output: string;
+
+    /** Emit a generated declaration beside the module or at a custom path. @default true */
+    declaration?: boolean | string;
+
+    /** Emit a template source map beside the module or at a custom path. @default true */
+    sourceMap?: boolean | string;
 }
 
 export interface BuildClientModulesOptions {
@@ -33,12 +42,21 @@ export interface BuildClientModulesOptions {
 
     /** Base directory for relative template and output paths. */
     cwd?: string;
+
+    /** Verify generated artifacts without writing and reject when any are stale. @default false */
+    check?: boolean;
 }
 
 export interface BuiltClientModule {
     name: string;
     output: string;
     bytes: number;
+    declaration?: string;
+    declarationBytes?: number;
+    sourceMap?: string;
+    sourceMapBytes?: number;
+    /** Whether this build invocation replaced at least one artifact for the module. */
+    written: boolean;
 }
 
 /** Compile and atomically write static client render modules during an asset build. */

@@ -5,15 +5,18 @@ import { pathToFileURL } from "node:url";
 
 import { buildClientModules } from "./client-module.js";
 
-const usage = "Usage: squirrellyify-client <config-file>";
+const usage = "Usage: squirrellyify-client [--check] <config-file>";
 
 async function main() {
-    const [configArgument, ...extraArguments] = process.argv.slice(2);
-    if (configArgument === "--help" || configArgument === "-h") {
+    const arguments_ = process.argv.slice(2);
+    if (arguments_.includes("--help") || arguments_.includes("-h")) {
         console.log(usage);
         return;
     }
-    if (!configArgument || extraArguments.length > 0) {
+    const check = arguments_.includes("--check");
+    const positionalArguments = arguments_.filter((argument) => argument !== "--check");
+    const [configArgument] = positionalArguments;
+    if (!configArgument || positionalArguments.length > 1 || configArgument.startsWith("-")) {
         throw new TypeError(usage);
     }
 
@@ -29,12 +32,15 @@ async function main() {
         throw new TypeError(`Client module config must export a plain object: ${configPath}`);
     }
 
+    const checkMode = check ? true : config.check;
     const built = await buildClientModules({
         ...config,
         cwd: config.cwd ?? path.dirname(configPath),
+        check: checkMode,
     });
     for (const module of built) {
-        console.log(`Built ${module.name}: ${module.output} (${module.bytes} bytes)`);
+        const status = checkMode ? "Checked" : module.written ? "Built" : "Unchanged";
+        console.log(`${status} ${module.name}: ${module.output} (${module.bytes} bytes)`);
     }
 }
 
