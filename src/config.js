@@ -216,22 +216,13 @@ function createScopedSqrlConfig(baseConfig) {
     const scopedFilters = new Cacher({});
     const scopedTemplates = new Cacher({});
 
-    // Copy Squirrelly's built-in helpers into the scoped storage so templates
-    // retain core functionality (iteration, includes, layout extends) even
-    // when running in isolated "scoped" mode.
-    for (const helperName of [
-        "each",
-        "foreach",
-        "include",
-        "extends",
-        "useScope",
-        "includeFile",
-        "extendsFile",
-    ]) {
-        const helperFn = Sqrl.helpers.get(helperName);
-        if (helperFn) {
-            scopedHelpers.define(helperName, helperFn);
-        }
+    // Copy every built-in helper into the scoped storage so templates retain
+    // core functionality (iteration, includes, layout extends) even when
+    // running in isolated "scoped" mode. Enumerating the live store instead
+    // of a hardcoded list keeps scoped mode complete when a Squirrelly
+    // release adds a helper.
+    for (const [helperName, helperFn] of Object.entries(Sqrl.helpers.cache ?? {})) {
+        scopedHelpers.define(helperName, helperFn);
     }
 
     const escapeFilter = Sqrl.filters.get("e");
