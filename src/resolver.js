@@ -187,7 +187,9 @@ export function createTemplateResolver({ fastify, extensionWithDot, useCache, sq
 
     async function findTemplatePath(templateName, searchDirs) {
         const templateFile = `${templateName}${extensionWithDot}`;
-        const cacheKey = `${searchDirs.join(";")}:${templateFile}`;
+        // NUL never appears in file paths, so joined directory lists cannot
+        // collide the way a printable separator could.
+        const cacheKey = `${searchDirs.join("\0")}\0:${templateFile}`;
 
         if (useCache && pathCache.has(cacheKey)) {
             return pathCache.get(cacheKey);
