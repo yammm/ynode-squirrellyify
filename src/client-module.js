@@ -62,28 +62,37 @@ function normalizedFunctionSource(name, fn, label) {
         throw new TypeError(`${label}.${name} must be a function.`);
     }
 
-    let source = Function.prototype.toString.call(fn).trim();
+    const source = Function.prototype.toString.call(fn).trim();
     if (source.includes("[native code]")) {
         throw new TypeError(`${label}.${name} must be serializable JavaScript.`);
     }
-    if (source.startsWith("async ") || fn.constructor?.name === "AsyncFunction") {
+    const constructorName = fn.constructor?.name;
+    if (
+        constructorName === "AsyncFunction" ||
+        constructorName === "AsyncGeneratorFunction" ||
+        /^async\b/.test(source)
+    ) {
         throw new TypeError(`${label}.${name} must be synchronous.`);
     }
 
-    if (!/^(?:async\s+)?function(?:\s*\*)?\b/.test(source) && !source.includes("=>")) {
-        source = source.startsWith("async ")
-            ? `async function ${source.slice("async ".length)}`
-            : `function ${source}`;
+    // Function declarations and arrows stringify as standalone expressions,
+    // while object method shorthand stringifies without the `function`
+    // keyword. Guessing the form from the source is fragile — an arrow inside
+    // a shorthand body reads as an arrow function — so let the parser decide:
+    // use the source as written when it parses, and fall back to the
+    // `function`-prefixed form for method shorthand.
+    let lastError = null;
+    for (const candidate of [source, `function ${source}`]) {
+        try {
+            Function(`return (${candidate});`);
+            return candidate;
+        } catch (error) {
+            lastError = error;
+        }
     }
-
-    try {
-        Function(`return (${source});`);
-    } catch (error) {
-        throw new TypeError(`${label}.${name} could not be serialized: ${error.message}`, {
-            cause: error,
-        });
-    }
-    return source;
+    throw new TypeError(`${label}.${name} could not be serialized: ${lastError.message}`, {
+        cause: lastError,
+    });
 }
 
 function serializeFunctions(values, label, blockedNames = new Set()) {
@@ -96,9 +105,7 @@ function serializeFunctions(values, label, blockedNames = new Set()) {
         .map((name) => {
             assertRuntimeName(name, label);
             if (blockedNames.has(name)) {
-                throw new TypeError(
-                    `${label}.${name} cannot override a built-in client runtime function.`,
-                );
+                throw new TypeError(`${label}.${name} cannot override a built-in client runtime function.`);
             }
             return [name, normalizedFunctionSource(name, values[name], label)];
         });
@@ -136,29 +143,21 @@ function validateTemplateAst(name, source, config, helperNames, filterNames) {
     const ast = Sqrl.parse(source, config);
     walkAst(ast, (node) => {
         if (node.t === "b" && INVALID_CONDITIONAL_BLOCKS.has(node.n)) {
-            throw new TypeError(
-                `Template "${name}" uses invalid conditional block "${node.n}"; use "elif".`,
-            );
+            throw new TypeError(`Template "${name}" uses invalid conditional block "${node.n}"; use "elif".`);
         }
         if ((node.t === "h" || node.t === "s") && UNSUPPORTED_HELPERS.has(node.n)) {
             throw new TypeError(`Template "${name}" uses unsupported client helper "${node.n}".`);
         }
         if (node.t === "h" || node.t === "s") {
             const supported =
-                ["if", "try"].includes(node.n) ||
-                BUILTIN_CLIENT_HELPERS.has(node.n) ||
-                helperNames.has(node.n);
+                ["if", "try"].includes(node.n) || BUILTIN_CLIENT_HELPERS.has(node.n) || helperNames.has(node.n);
             if (!supported) {
-                throw new TypeError(
-                    `Template "${name}" uses client helper "${node.n}" without providing it.`,
-                );
+                throw new TypeError(`Template "${name}" uses client helper "${node.n}" without providing it.`);
             }
         }
         for (const [filterName] of node.f ?? []) {
             if (!filterNames.has(filterName)) {
-                throw new TypeError(
-                    `Template "${name}" uses client filter "${filterName}" without providing it.`,
-                );
+                throw new TypeError(`Template "${name}" uses client filter "${filterName}" without providing it.`);
             }
         }
     });
@@ -181,10 +180,7 @@ function compileConfig(overrides = {}) {
     if (overrides.varName !== undefined && overrides.varName !== "it") {
         throw new TypeError('Client modules require Squirrelly varName to remain "it".');
     }
-    return Sqrl.getConfig(
-        { ...overrides, async: false, useWith: false, varName: "it" },
-        Sqrl.defaultConfig,
-    );
+    return Sqrl.getConfig({ ...overrides, async: false, useWith: false, varName: "it" }, Sqrl.defaultConfig);
 }
 
 function objectSource(entries) {
@@ -283,9 +279,7 @@ export async function compileClientModule(options = {}) {
                 `templates[${JSON.stringify(name)}] = function ${name}Template(it, c = runtime, cb) {\n${body}\n};`,
         )
         .join("\n");
-    const renderEntries = templateNames
-        .map((name) => `${name}: (data) => templates.${name}(data)`)
-        .join(",\n    ");
+    const renderEntries = templateNames.map((name) => `${name}: (data) => templates.${name}(data)`).join(",\n    ");
 
     return `// Generated by @ynode/squirrellyify. Do not edit.\n${runtimeSource(filterEntries, helperEntries)}\n${templateFunctions}\nexport const render = Object.freeze({\n    ${renderEntries}\n});\n`;
 }

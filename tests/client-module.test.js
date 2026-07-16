@@ -97,6 +97,40 @@ test("embeds explicit browser-safe custom filters and helpers", async () => {
     assert.equal(clientModule.render.total({ amount: 12.5, status: "ready" }), "$12.50 READY");
 });
 
+test("serializes method-shorthand filters and helpers regardless of body contents", async () => {
+    const source = await compileClientModule({
+        templates: {
+            names: "{{ it.rows | names }} {{@ shout(it.rows) /}}",
+        },
+        filters: {
+            // Method shorthand whose body contains an arrow — the shorthand
+            // itself must still serialize as a standalone function.
+            names(rows) {
+                return rows.map((row) => row.name).join(", ");
+            },
+        },
+        helpers: {
+            shout(content) {
+                return content.params[0].map((row) => row.name.toUpperCase()).join("!");
+            },
+        },
+    });
+
+    const clientModule = await importModule(source);
+    assert.equal(clientModule.render.names({ rows: [{ name: "Ada" }, { name: "Lin" }] }), "Ada, Lin ADA!LIN");
+});
+
+test("safe filter bypasses escaping exactly like the server", async () => {
+    const source = await compileClientModule({
+        templates: {
+            trusted: "{{ it.html | safe }}|{{ it.html }}",
+        },
+    });
+
+    const clientModule = await importModule(source);
+    assert.equal(clientModule.render.trusted({ html: "<b>x</b>" }), "<b>x</b>|&lt;b&gt;x&lt;/b&gt;");
+});
+
 test("allows templates in one module to include each other", async () => {
     const source = await compileClientModule({
         templates: {
@@ -221,10 +255,7 @@ test("compiles every module before replacing existing build output", async (t) =
 
 test("rejects unsupported or incomplete client module definitions", async () => {
     await assert.rejects(() => compileClientModule(), /templates must be a plain object/);
-    await assert.rejects(
-        () => compileClientModule({ templates: {} }),
-        /at least one named template/,
-    );
+    await assert.rejects(() => compileClientModule({ templates: {} }), /at least one named template/);
     await assert.rejects(
         () => compileClientModule({ templates: { "table-body": "ok" } }),
         /valid JavaScript identifier/,
@@ -280,6 +311,14 @@ test("rejects unsupported or incomplete client module definitions", async () => 
         /must be synchronous/,
     );
     await assert.rejects(
+        () =>
+            compileClientModule({
+                templates: { page: "ok" },
+                filters: { value: async (input) => input },
+            }),
+        /must be synchronous/,
+    );
+    await assert.rejects(
         () => compileClientModule({ templates: { page: "ok" }, config: { async: true } }),
         /do not support async/,
     );
@@ -287,10 +326,7 @@ test("rejects unsupported or incomplete client module definitions", async () => 
         () => compileClientModule({ templates: { page: "ok" }, config: { useWith: true } }),
         /do not support Squirrelly useWith/,
     );
-    await assert.rejects(
-        () => buildClientModules({ modules: {} }),
-        /at least one named client module/,
-    );
+    await assert.rejects(() => buildClientModules({ modules: {} }), /at least one named client module/);
     await assert.rejects(
         () =>
             buildClientModules({
