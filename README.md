@@ -14,6 +14,7 @@ A simple and fast plugin for using the [Squirrelly](https://squirrelly.js.org/) 
 - 🧬 **Encapsulation-Aware:** Supports Fastify encapsulation with scoped template settings.
 - 🛡️ **Secure:** Protects against path traversal attacks in template names.
 - 🔧 **Extensible:** Easily add custom Squirrelly helpers and filters.
+- 🌐 **Client Modules:** Precompiles named partials into self-contained, CSP-friendly browser ES modules.
 
 ## Installation
 
@@ -123,6 +124,105 @@ These APIs are scope-aware:
 The cache API is process-local and lets you invalidate compiled template/path caches at runtime when `cache: true` is used.
 
 Invalid option types are rejected at plugin registration time with descriptive errors.
+
+## Client Render Modules
+
+`compileClientModule()` turns one or more Squirrelly partials into a self-contained browser ES module. Compilation happens in Node, so generated modules do not use `eval`, `new Function`, or a browser Squirrelly dependency. Use `buildClientModules()` or the CLI in your asset build so no template compilation occurs when the application boots.
+
+Each named template becomes a function on the generated module's frozen `render` object. Template names must be valid JavaScript identifiers.
+
+```javascript
+import fs from "node:fs/promises";
+
+import { compileClientModule } from "@ynode/squirrellyify";
+
+const source = await compileClientModule({
+    templates: {
+        tableBody: { file: "views/client/history/table-body.sqrl" },
+        summary: { file: "views/client/history/summary.sqrl" },
+        filterChips: { file: "views/client/history/filter-chips.sqrl" },
+    },
+    filters: {
+        currency(value) {
+            return new Intl.NumberFormat("en-US", {
+                style: "currency",
+                currency: "USD",
+            }).format(Number(value));
+        },
+    },
+});
+
+await fs.writeFile("public/invoice/sqrl/history.js", source, "utf8");
+```
+
+For repeatable builds, create a config module such as `build/squirrelly-client.config.mjs`:
+
+```javascript
+export default {
+    modules: {
+        invoiceHistory: {
+            output: "../public/invoice/sqrl/history.js",
+            templates: {
+                tableBody: { file: "../views/client/history/table-body.sqrl" },
+                summary: { file: "../views/client/history/summary.sqrl" },
+                filterChips: { file: "../views/client/history/filter-chips.sqrl" },
+            },
+        },
+    },
+};
+```
+
+Paths in the config resolve from the config file's directory. Add the compiler to the application's normal asset build:
+
+```json
+{
+    "scripts": {
+        "build:sqrl": "squirrellyify-client build/squirrelly-client.config.mjs"
+    }
+}
+```
+
+The programmatic build API accepts the same object and returns metadata for every generated file:
+
+```javascript
+import { buildClientModules } from "@ynode/squirrellyify";
+
+const built = await buildClientModules({
+    modules: {
+        invoiceHistory: {
+            output: "public/invoice/sqrl/history.js",
+            templates: {
+                tableBody: { file: "views/client/history/table-body.sqrl" },
+            },
+        },
+    },
+});
+```
+
+The generated file can be imported as a normal browser module:
+
+```javascript
+import * as history from "/invoice/sqrl/history.js";
+
+tbody.innerHTML = history.render.tableBody(response);
+summary.innerHTML = history.render.summary(response.summary);
+chips.innerHTML = history.render.filterChips(response.filters);
+```
+
+String template values are treated as inline Squirrelly source. File inputs must use an explicit `{ file }` descriptor:
+
+```javascript
+const source = await compileClientModule({
+    templates: {
+        inlineMessage: "<p>{{ it.message }}</p>",
+        tableBody: { file: "views/client/table-body.sqrl" },
+    },
+});
+```
+
+Templates in the same module may include one another by name. `if`, `elif`, `else`, `try`, `each`, `foreach`, `include`, and `useScope` are available. Use `{{# elif(condition) }}` for else-if branches; invalid `elseif` and `elf` spellings fail the build. Layout inheritance, file includes, asynchronous rendering, `useWith`, and compiler plugins are intentionally rejected for client modules.
+
+Custom helpers and filters are serialized into the generated module. They must be pure, synchronous, browser-safe functions and cannot reference Node APIs or closed-over values. Built-in escaping and runtime helpers cannot be overridden.
 
 ## Advanced Usage
 

@@ -6,7 +6,15 @@ import test from "node:test";
 
 import Fastify from "fastify";
 
-import squirrellyify from "../src/plugin.js";
+import squirrellyify, {
+    buildClientModules,
+    compileClientModule,
+    squirrellyify as namedSquirrellyify,
+} from "../src/plugin.js";
+
+assert.equal(namedSquirrellyify, squirrellyify);
+assert.equal(typeof compileClientModule, "function");
+assert.equal(typeof buildClientModules, "function");
 
 async function createTempDir(t) {
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), "squirrellyify-fastify-test-"));

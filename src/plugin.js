@@ -246,7 +246,11 @@ async function squirrellyify(fastify, options = {}) {
     fastify.decorate("Sqrl", Sqrl);
 }
 
-export default fp(squirrellyify, {
+const plugin = fp(squirrellyify, {
     fastify: "5.x",
     name: "@ynode/squirrellyify",
 });
+
+export { buildClientModules, compileClientModule } from "./client-module.js";
+export { plugin as squirrellyify };
+export default plugin;

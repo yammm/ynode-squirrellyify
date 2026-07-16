@@ -1,5 +1,51 @@
 import type { FastifyPluginAsync } from "fastify";
 
+export type ClientTemplateInput =
+    | string
+    | { source: string; file?: never }
+    | { file: string; source?: never };
+
+export interface CompileClientModuleOptions {
+    /** Named templates exposed as properties on the generated `render` object. */
+    templates: Record<string, ClientTemplateInput>;
+
+    /** Pure, synchronous, browser-safe custom Squirrelly helpers. */
+    helpers?: Record<string, (...args: unknown[]) => unknown>;
+
+    /** Pure, synchronous, browser-safe custom Squirrelly filters. */
+    filters?: Record<string, (...args: unknown[]) => unknown>;
+
+    /** Supported synchronous Squirrelly compile configuration overrides. */
+    config?: Record<string, unknown>;
+}
+
+/** Compile named Squirrelly templates into one self-contained browser ES module. */
+export function compileClientModule(options: CompileClientModuleOptions): Promise<string>;
+
+export interface BuildClientModuleInput extends CompileClientModuleOptions {
+    /** Process- or build-config-relative generated ES module path. */
+    output: string;
+}
+
+export interface BuildClientModulesOptions {
+    /** Named client modules to compile and write. */
+    modules: Record<string, BuildClientModuleInput>;
+
+    /** Base directory for relative template and output paths. */
+    cwd?: string;
+}
+
+export interface BuiltClientModule {
+    name: string;
+    output: string;
+    bytes: number;
+}
+
+/** Compile and atomically write static client render modules during an asset build. */
+export function buildClientModules(
+    options: BuildClientModulesOptions,
+): Promise<BuiltClientModule[]>;
+
 export interface SqrlEngineOptions {
     /**
      * Whether to share helpers/filters/partials globally or isolate them per Fastify registration.
