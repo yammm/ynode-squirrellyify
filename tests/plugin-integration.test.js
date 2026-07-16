@@ -153,7 +153,11 @@ test("accepts defaultExtension with a leading dot", async (t) => {
 test("merges reply context and locals into view data with explicit data precedence", async (t) => {
     const root = await createTempDir(t);
     const viewsDir = path.join(root, "views");
-    await writeTemplate(viewsDir, "page.sqrl", "<h1>{{it.name}}</h1><p>{{it.greeting}}</p><p>{{it.title}}</p>");
+    await writeTemplate(
+        viewsDir,
+        "page.sqrl",
+        "<h1>{{it.name}}</h1><p>{{it.greeting}}</p><p>{{it.title}}</p>",
+    );
 
     const app = createFastifyHarness();
     await app.register({ templates: viewsDir });
@@ -168,7 +172,10 @@ test("merges reply context and locals into view data with explicit data preceden
     );
 
     assert.equal(rendered.statusCode, 200);
-    assert.equal(rendered.payload, "<h1>Route Name</h1><p>Hello from locals</p><p>Context Title</p>");
+    assert.equal(
+        rendered.payload,
+        "<h1>Route Name</h1><p>Hello from locals</p><p>Context Title</p>",
+    );
 });
 
 test("renders async templates and layouts when sqrl.config.async is enabled", async (t) => {
@@ -331,8 +338,16 @@ test("runtime API in global mode shares partials across registrations", async (t
     const root = await createTempDir(t);
     const viewsA = path.join(root, "views-a");
     const viewsB = path.join(root, "views-b");
-    await writeTemplate(viewsA, "page.sqrl", "<section>{{@include('runtime/card', { word: it.word })/}}</section>");
-    await writeTemplate(viewsB, "page.sqrl", "<section>{{@include('runtime/card', { word: it.word })/}}</section>");
+    await writeTemplate(
+        viewsA,
+        "page.sqrl",
+        "<section>{{@include('runtime/card', { word: it.word })/}}</section>",
+    );
+    await writeTemplate(
+        viewsB,
+        "page.sqrl",
+        "<section>{{@include('runtime/card', { word: it.word })/}}</section>",
+    );
 
     const appA = createFastifyHarness();
     await appA.register({ templates: viewsA });
@@ -357,8 +372,16 @@ test("runtime API in scoped mode isolates partials per registration", async (t) 
     const root = await createTempDir(t);
     const viewsA = path.join(root, "views-a");
     const viewsB = path.join(root, "views-b");
-    await writeTemplate(viewsA, "page.sqrl", "<section>{{@include('runtime/card', { word: it.word })/}}</section>");
-    await writeTemplate(viewsB, "page.sqrl", "<section>{{@include('runtime/card', { word: it.word })/}}</section>");
+    await writeTemplate(
+        viewsA,
+        "page.sqrl",
+        "<section>{{@include('runtime/card', { word: it.word })/}}</section>",
+    );
+    await writeTemplate(
+        viewsB,
+        "page.sqrl",
+        "<section>{{@include('runtime/card', { word: it.word })/}}</section>",
+    );
 
     const appA = createFastifyHarness();
     await appA.register({
@@ -518,8 +541,16 @@ test("global mode shares namespaced partials across registrations", async (t) =>
     const partialsA = path.join(root, "partials-a");
     const partialsB = path.join(root, "partials-b");
 
-    await writeTemplate(viewsA, "page.sqrl", "{{@include('shared-global/widget', { word: it.word })/}}");
-    await writeTemplate(viewsB, "page.sqrl", "{{@include('shared-global/widget', { word: it.word })/}}");
+    await writeTemplate(
+        viewsA,
+        "page.sqrl",
+        "{{@include('shared-global/widget', { word: it.word })/}}",
+    );
+    await writeTemplate(
+        viewsB,
+        "page.sqrl",
+        "{{@include('shared-global/widget', { word: it.word })/}}",
+    );
     await writeTemplate(partialsA, "widget.sqrl", "A:{{it.word}}");
     await writeTemplate(partialsB, "widget.sqrl", "B:{{it.word}}");
 
@@ -550,8 +581,16 @@ test("scoped mode isolates namespaced partials per registration", async (t) => {
     const partialsA = path.join(root, "partials-a");
     const partialsB = path.join(root, "partials-b");
 
-    await writeTemplate(viewsA, "page.sqrl", "{{@include('shared-scoped/widget', { word: it.word })/}}");
-    await writeTemplate(viewsB, "page.sqrl", "{{@include('shared-scoped/widget', { word: it.word })/}}");
+    await writeTemplate(
+        viewsA,
+        "page.sqrl",
+        "{{@include('shared-scoped/widget', { word: it.word })/}}",
+    );
+    await writeTemplate(
+        viewsB,
+        "page.sqrl",
+        "{{@include('shared-scoped/widget', { word: it.word })/}}",
+    );
     await writeTemplate(partialsA, "widget.sqrl", "A:{{it.word}}");
     await writeTemplate(partialsB, "widget.sqrl", "B:{{it.word}}");
 
