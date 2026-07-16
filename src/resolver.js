@@ -76,8 +76,11 @@ function resolvePartialName(partialPath, partialsDir, extensionWithDot, namespac
 /**
  * Preload partial templates and define them in the configured Sqrl template store.
  *
+ * Each entry may carry its own namespace, which overrides the registration-wide
+ * `partialsNamespace` setting for that directory only.
+ *
  * @param {object} options
- * @param {string[]} options.partialsDirs
+ * @param {{ dir: string, namespace?: boolean|string }[]} options.partialsEntries
  * @param {string} options.extensionWithDot
  * @param {boolean} [options.partialsRecursive=true]
  * @param {boolean|string} [options.partialsNamespace=false]
@@ -87,7 +90,7 @@ function resolvePartialName(partialPath, partialsDir, extensionWithDot, namespac
  * @returns {Promise<void>}
  */
 export async function preloadPartials({
-    partialsDirs,
+    partialsEntries,
     extensionWithDot,
     partialsRecursive = true,
     partialsNamespace = false,
@@ -95,13 +98,16 @@ export async function preloadPartials({
     defineSqrlTemplate,
     sqrlConfig,
 }) {
-    if (partialsDirs.length === 0) {
+    if (partialsEntries.length === 0) {
         return;
     }
 
-    for (const partialsDir of partialsDirs) {
+    for (const { dir: partialsDir, namespace: entryNamespace } of partialsEntries) {
         try {
-            const namespace = resolvePartialsNamespace(partialsNamespace, partialsDir);
+            const namespace = resolvePartialsNamespace(
+                entryNamespace ?? partialsNamespace,
+                partialsDir,
+            );
             const files = await collectPartialFiles(
                 partialsDir,
                 extensionWithDot,

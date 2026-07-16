@@ -101,9 +101,9 @@ You can pass an options object when registering the plugin.
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `templates` | `string \| string[]` | `path.join(process.cwd(), "views")` | The directory or directories to search for page and layout templates. Searched in the provided order. |
-| `partials` | `string \| string[]` | `[]` | The directory or directories for partial templates. All partials are loaded on startup and available by name. |
+| `partials` | `string \| Array<string \| { dir, namespace }>` | `[]` | The directory or directories for partial templates. All partials are loaded on startup and available by name. Array entries may be `{ dir, namespace }` objects to namespace one directory independently. |
 | `partialsRecursive` | `boolean` | `true` | If `true`, partials are loaded recursively from subdirectories. Names use forward slashes (for example, `emails/header`). |
-| `partialsNamespace` | `boolean \| string` | `false` | Optional namespace prefix for partial names. Use `true` to prefix with each partials directory basename, or provide a custom string. |
+| `partialsNamespace` | `boolean \| string` | `false` | Optional namespace prefix for partial names. Use `true` to prefix with each partials directory basename, or provide a custom string. Entries with their own `namespace` override this per directory. |
 | `layout` | `string` | `undefined` | The name of the default layout file to use (without extension). Can be overridden per-route. |
 | `defaultExtension` | `string` | `"sqrl"` | The file extension for all template files. Leading `.` is optional (for example, `"html"` or `".html"`). |
 | `cache` | `boolean` | `NODE_ENV === "production"` | If `true`, compiled templates and resolved file paths will be cached in memory. |
@@ -395,6 +395,26 @@ fastify.register(squirrellyify, {
 
 ```html
 {{@include('shared/cards/user-card', { name: 'John Doe', email: 'john@example.com' })/}}
+```
+
+To namespace directories independently, use `{ dir, namespace }` entries. Plain
+string entries keep following `partialsNamespace`, so a shared chrome directory
+can stay bare while each feature directory gets its own prefix:
+
+```javascript
+fastify.register(squirrellyify, {
+    templates: "views",
+    partials: [
+        "views/partials",
+        { dir: "invoice/views/partials", namespace: "invoice" },
+        { dir: "expense/views/partials", namespace: "expense" },
+    ],
+});
+```
+
+```html
+{{@include('header')/}}
+{{@include('invoice/history-table', { rows: it.rows })/}}
 ```
 
 ### Scoped Configuration (Encapsulation)

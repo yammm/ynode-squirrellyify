@@ -32,7 +32,7 @@ import Sqrl from "squirrelly";
 
 import {
     resolveExtension,
-    resolveInitialPartialsDirs,
+    resolveInitialPartialsEntries,
     resolveInitialTemplateDirs,
     resolveSqrlConfig,
     resolveUseCache,
@@ -60,9 +60,9 @@ import { assertSafeName } from "./safety.js";
  * @param {FastifyInstance} fastify The Fastify instance.
  * @param {object} options Plugin options.
  * @param {string|string[]} [options.templates] The directory or directories where page and layout templates are stored. Defaults to "views". Directories are searched in order.
- * @param {string|string[]} [options.partials] The directory or directories where partial templates are stored.
+ * @param {string|Array<string|{dir: string, namespace?: boolean|string}>} [options.partials] The directory or directories where partial templates are stored. Array entries may be `{ dir, namespace }` objects to namespace one directory independently.
  * @param {boolean} [options.partialsRecursive=true] Enables recursive loading of partial templates from subdirectories.
- * @param {boolean|string} [options.partialsNamespace=false] Optional namespace prefix for partial names. Use `true` to namespace by partials directory basename.
+ * @param {boolean|string} [options.partialsNamespace=false] Optional namespace prefix for partial names. Use `true` to namespace by partials directory basename. Entries with their own `namespace` override this per directory.
  * @param {string} [options.layout] The name of the default layout file to use (without extension).
  * @param {string} [options.defaultExtension="sqrl"] The default extension for template files.
  * @param {boolean} [options.cache] Enables template caching. Defaults to true if NODE_ENV is "production".
@@ -85,7 +85,7 @@ async function squirrellyify(fastify, options = {}) {
             : fastify.log;
 
     const initialTemplatesDirs = resolveInitialTemplateDirs(options);
-    const initialPartialsDirs = resolveInitialPartialsDirs(options);
+    const initialPartialsEntries = resolveInitialPartialsEntries(options);
     const initialLayout = options.layout;
     const { extensionWithDot } = resolveExtension(options);
     const useCache = resolveUseCache(options);
@@ -114,7 +114,7 @@ async function squirrellyify(fastify, options = {}) {
     }
 
     await preloadPartials({
-        partialsDirs: initialPartialsDirs,
+        partialsEntries: initialPartialsEntries,
         extensionWithDot,
         partialsRecursive: options.partialsRecursive ?? true,
         partialsNamespace: options.partialsNamespace ?? false,

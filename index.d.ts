@@ -81,6 +81,19 @@ export interface SqrlEngineOptions {
     filters?: Record<string, (...args: unknown[]) => unknown>;
 }
 
+export interface PartialsDirEntry {
+    /** Directory where partial templates are stored. */
+    dir: string;
+
+    /**
+     * Namespace prefix for this directory's partial names, overriding the
+     * registration-wide `partialsNamespace` option. Use `true` to prefix with
+     * the directory basename, a string for a custom prefix, or `false` for
+     * bare names.
+     */
+    namespace?: boolean | string;
+}
+
 export interface SquirrellyifyOptions {
     /**
      * Directory or directories where page and layout templates are stored.
@@ -90,9 +103,11 @@ export interface SquirrellyifyOptions {
     templates?: string | string[];
 
     /**
-     * Directory or directories where partial templates are stored.
+     * Directory or directories where partial templates are stored. Array
+     * entries may be `{ dir, namespace }` objects to namespace one directory
+     * independently of the others.
      */
-    partials?: string | string[];
+    partials?: string | Array<string | PartialsDirEntry>;
 
     /**
      * Enable recursive loading of partial templates from subdirectories.
@@ -103,6 +118,7 @@ export interface SquirrellyifyOptions {
     /**
      * Optional namespace prefix for partial names. Use `true` to namespace
      * by partials directory basename, or a string for a custom prefix.
+     * Entries with their own `namespace` override this per directory.
      * @default false
      */
     partialsNamespace?: boolean | string;

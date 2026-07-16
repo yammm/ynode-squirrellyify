@@ -21,6 +21,29 @@ function isStringArray(value) {
 }
 
 /**
+ * Checks whether a value is a valid partials entry: a directory string or a
+ * `{ dir, namespace }` object with an optional per-directory namespace.
+ * @param {*} value - Value to test.
+ * @returns {boolean}
+ */
+function isPartialsEntry(value) {
+    if (typeof value === "string") {
+        return true;
+    }
+    if (!isPlainObject(value)) {
+        return false;
+    }
+    if (typeof value.dir !== "string" || value.dir.length === 0) {
+        return false;
+    }
+    return (
+        value.namespace === undefined ||
+        typeof value.namespace === "boolean" ||
+        typeof value.namespace === "string"
+    );
+}
+
+/**
  * Throws a TypeError when a plugin option fails validation.
  * @param {boolean} condition - Validation result.
  * @param {string} message - Error message.
@@ -67,8 +90,9 @@ export function validatePluginOptions(options = {}) {
     }
     if (options.partials !== undefined) {
         assertOptionType(
-            typeof options.partials === "string" || isStringArray(options.partials),
-            'Invalid option "partials": expected a string or an array of strings.',
+            typeof options.partials === "string" ||
+                (Array.isArray(options.partials) && options.partials.every(isPartialsEntry)),
+            'Invalid option "partials": expected a string, or an array of strings and { dir, namespace } objects.',
         );
     }
     if (options.partialsRecursive !== undefined) {
@@ -160,17 +184,23 @@ export function resolveInitialTemplateDirs(options = {}) {
 }
 
 /**
- * Resolves the initial partials directories from plugin options.
+ * Resolves the initial partials entries from plugin options, normalizing
+ * directory strings and `{ dir, namespace }` objects to one entry shape. An
+ * entry without its own namespace falls back to the registration-wide
+ * `partialsNamespace` option at preload time.
  * Returns an empty array when no partials option is provided.
  * @param {object} [options] - Plugin options.
- * @returns {string[]} Array of partial directory paths.
+ * @returns {{ dir: string, namespace?: boolean|string }[]} Normalized partials entries.
  */
-export function resolveInitialPartialsDirs(options = {}) {
-    return Array.isArray(options.partials)
+export function resolveInitialPartialsEntries(options = {}) {
+    const raw = Array.isArray(options.partials)
         ? options.partials
         : typeof options.partials === "string"
           ? [options.partials]
           : [];
+    return raw.map((entry) =>
+        typeof entry === "string" ? { dir: entry } : { dir: entry.dir, namespace: entry.namespace },
+    );
 }
 
 /**

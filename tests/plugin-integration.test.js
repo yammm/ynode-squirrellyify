@@ -534,6 +534,86 @@ test("supports partial namespace prefix using the partials directory basename", 
     assert.equal(rendered.payload, "<article><p>Ana</p></article>");
 });
 
+test("namespaces partial directories independently through { dir, namespace } entries", async (t) => {
+    const root = await createTempDir(t);
+    const viewsDir = path.join(root, "views");
+    const chromeDir = path.join(root, "chrome");
+    const invoiceDir = path.join(root, "invoice-partials");
+    const expenseDir = path.join(root, "expense-partials");
+
+    await writeTemplate(
+        viewsDir,
+        "page.sqrl",
+        "{{@include('header')/}}|{{@include('invoice/table', { word: it.word })/}}|{{@include('expense/table', { word: it.word })/}}",
+    );
+    await writeTemplate(chromeDir, "header.sqrl", "chrome");
+    await writeTemplate(invoiceDir, "table.sqrl", "invoice:{{it.word}}");
+    await writeTemplate(expenseDir, "table.sqrl", "expense:{{it.word}}");
+
+    const app = createFastifyHarness();
+    await app.register({
+        templates: viewsDir,
+        partials: [
+            chromeDir,
+            { dir: invoiceDir, namespace: "invoice" },
+            { dir: expenseDir, namespace: "expense" },
+        ],
+        sqrl: { scope: "scoped" },
+    });
+
+    const rendered = await app.render("page", { word: "rows" });
+    assert.equal(rendered.statusCode, 200);
+    assert.equal(rendered.payload, "chrome|invoice:rows|expense:rows");
+});
+
+test("entry namespaces override the registration-wide partialsNamespace per directory", async (t) => {
+    const root = await createTempDir(t);
+    const viewsDir = path.join(root, "views");
+    const fallbackDir = path.join(root, "fallback-partials");
+    const customDir = path.join(root, "custom-partials");
+    const bareDir = path.join(root, "bare-partials");
+
+    await writeTemplate(
+        viewsDir,
+        "page.sqrl",
+        "{{@include('fallback-partials/widget')/}}|{{@include('custom/widget')/}}|{{@include('widget')/}}",
+    );
+    await writeTemplate(fallbackDir, "widget.sqrl", "fallback");
+    await writeTemplate(customDir, "widget.sqrl", "custom");
+    await writeTemplate(bareDir, "widget.sqrl", "bare");
+
+    const app = createFastifyHarness();
+    await app.register({
+        templates: viewsDir,
+        partials: [
+            { dir: fallbackDir },
+            { dir: customDir, namespace: "custom" },
+            { dir: bareDir, namespace: false },
+        ],
+        partialsNamespace: true,
+        sqrl: { scope: "scoped" },
+    });
+
+    const rendered = await app.render("page", {});
+    assert.equal(rendered.statusCode, 200);
+    assert.equal(rendered.payload, "fallback|custom|bare");
+});
+
+test("rejects malformed partials entries with a clear registration error", async () => {
+    for (const partials of [
+        [{ namespace: "invoice" }],
+        [{ dir: "" }],
+        [{ dir: 42 }],
+        [null],
+        [["nested"]],
+    ]) {
+        await assert.rejects(async () => {
+            const app = createFastifyHarness();
+            await app.register({ partials });
+        }, /Invalid option "partials": expected a string, or an array of strings and \{ dir, namespace \} objects/);
+    }
+});
+
 test("global mode shares namespaced partials across registrations", async (t) => {
     const root = await createTempDir(t);
     const viewsA = path.join(root, "views-a");
