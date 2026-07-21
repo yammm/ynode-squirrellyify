@@ -1,6 +1,6 @@
 {
     "name": "@ynode/squirrellyify",
-    "version": "1.10.0",
+    "version": "1.10.0+290558",
     "description": "Fastify 5 plugin for rendering Squirrelly templates with layout support, partials, and scoped configuration.",
     "main": "src/plugin.js",
     "types": "index.d.ts",
@@ -45,7 +45,7 @@
         "@eslint/js": "^10.0.1",
         "@eslint/json": "^2.0.1",
         "@eslint/markdown": "^8.0.3",
-        "@mikinho/autover": "^2.1.0",
+        "@mikinho/autover": "^3.0.0",
         "auto-changelog": "^2.6.0",
         "eslint": "^10.7.0",
         "eslint-config-prettier": "^10.1.8",
@@ -72,7 +72,7 @@
         "ver:preview": "npx autover --no-amend --dry-run --short",
         "ver:apply": "npx autover --guard-unchanged --short",
         "test": "node --test && npm run docs:check",
-        "prepublishOnly": "npm run lint && npm test",
+        "prepublishOnly": "npm run format:check && npm run lint && npm test && npm run docs",
         "postversion": "git push && git push --tags"
     },
     "publishConfig": {

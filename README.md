@@ -397,9 +397,7 @@ fastify.register(squirrellyify, {
 {{@include('shared/cards/user-card', { name: 'John Doe', email: 'john@example.com' })/}}
 ```
 
-To namespace directories independently, use `{ dir, namespace }` entries. Plain
-string entries keep following `partialsNamespace`, so a shared chrome directory
-can stay bare while each feature directory gets its own prefix:
+To namespace directories independently, use `{ dir, namespace }` entries. Plain string entries keep following `partialsNamespace`, so a shared chrome directory can stay bare while each feature directory gets its own prefix:
 
 ```javascript
 fastify.register(squirrellyify, {
@@ -413,8 +411,7 @@ fastify.register(squirrellyify, {
 ```
 
 ```html
-{{@include('header')/}}
-{{@include('invoice/history-table', { rows: it.rows })/}}
+{{@include('header')/}} {{@include('invoice/history-table', { rows: it.rows })/}}
 ```
 
 ### Scoped Configuration (Encapsulation)
