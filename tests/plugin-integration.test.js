@@ -695,3 +695,32 @@ test("scoped mode isolates namespaced partials per registration", async (t) => {
     assert.equal(fromA.payload, "A:one");
     assert.equal(fromB.payload, "B:two");
 });
+
+test("render errors are logged through the request-scoped logger", async (t) => {
+    const root = await createTempDir(t);
+    const viewsDir = path.join(root, "views");
+    await writeTemplate(viewsDir, "page.sqrl", "<p>{{ it.label }}</p>");
+
+    const harness = createFastifyHarness();
+    await harness.register({ templates: viewsDir });
+
+    const logged = [];
+    const result = await harness.render(
+        "missing",
+        {},
+        {
+            request: {
+                server: harness.instance,
+                log: {
+                    error(error) {
+                        logged.push(error);
+                    },
+                },
+            },
+        },
+    );
+
+    assert.equal(result.statusCode, 500);
+    assert.equal(logged.length, 1);
+    assert.match(String(logged[0]), /not found/);
+});

@@ -204,7 +204,10 @@ async function squirrellyify(fastify, options = {}) {
 
             return this.type("text/html").send(finalHtml);
         } catch (error) {
-            log.error(error);
+            // Request-scoped logging keeps the reqId on render failures; the
+            // registration-scoped child logger remains the fallback and stays
+            // in use for registration-time messages.
+            (this.request?.log ?? log).error(error);
             if (process.env.NODE_ENV === "production") {
                 // In production, send a generic error and don't leak details
                 this.status(500).send("An internal server error occurred.");
