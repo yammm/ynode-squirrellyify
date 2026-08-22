@@ -10,6 +10,20 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+const expectedPackedFiles = [
+    "CHANGELOG.md",
+    "LICENSE",
+    "README.md",
+    "index.d.ts",
+    "package.json",
+    "src/client-module-cli.js",
+    "src/client-module.js",
+    "src/config.js",
+    "src/plugin.js",
+    "src/resolver.js",
+    "src/runtime-api.js",
+    "src/safety.js",
+];
 
 async function run(command, args, cwd, env = process.env) {
     await execFileAsync(command, args, {
@@ -43,6 +57,12 @@ async function main() {
         const [packed] = JSON.parse(stdout);
         if (!packed?.filename) {
             throw new Error("npm pack did not report a package archive");
+        }
+        const packedPaths = new Set((packed.files ?? []).map((file) => file.path));
+        for (const expectedPath of expectedPackedFiles) {
+            if (!packedPaths.has(expectedPath)) {
+                throw new Error(`npm pack omitted required file: ${expectedPath}`);
+            }
         }
 
         const archivePath = path.join(packDirectory, packed.filename);
