@@ -11,6 +11,7 @@ A simple and fast plugin for using the [Squirrelly](https://squirrelly.js.org/) 
 - 🐿️ **Modern Templating:** Full support for Squirrelly v9 features.
 - ⚡ **High Performance:** Template caching is enabled by default in production.
 - 📁 **Layouts & Partials:** Built-in support for layouts and shared partials.
+- 🧩 **Composable Rendering:** `reply.renderView()` returns HTML without sending a response.
 - 🧬 **Encapsulation-Aware:** Supports Fastify encapsulation with scoped template settings.
 - 🛡️ **Secure:** Protects against path traversal attacks in template names.
 - 🔧 **Extensible:** Easily add custom Squirrelly helpers and filters.
@@ -92,7 +93,22 @@ Merge precedence is:
 
 1. `reply.context`
 2. `reply.locals`
-3. `reply.view(..., data)` (highest precedence)
+3. Explicit `data` passed to `reply.view()` or `reply.renderView()` (highest precedence)
+
+### Render Without Sending
+
+Use `reply.renderView(template, data)` when a route needs the complete page-and-layout HTML as a string before deciding how to respond:
+
+```javascript
+fastify.get("/preview", async (request, reply) => {
+    const html = await reply.renderView("index", { name: "Preview" });
+    return { html };
+});
+```
+
+`renderView()` uses the same request context, locals, scoped template directories, layout precedence, partials, and cache as `view()`. It does not set the content type, change the status, or call `send()`. Rendering failures reject normally, so an awaited or returned call flows through Fastify's configured error handler. Missing resources use the path-safe codes `ERR_SQUIRRELLYIFY_TEMPLATE_NOT_FOUND` and `ERR_SQUIRRELLYIFY_LAYOUT_NOT_FOUND`. In production, all failures use the generic `ERR_SQUIRRELLYIFY_RENDER` wrapper and retain the original error as `cause` for logging or explicit handlers.
+
+`reply.view()` remains the send-oriented convenience method: it calls the same renderer, sets `text/html; charset=utf-8`, and sends the HTML. Its existing production-safe error response and development error delegation behavior are unchanged.
 
 ## Configuration Options
 

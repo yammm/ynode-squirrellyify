@@ -33,6 +33,10 @@ const compiledPartial: SqrlTemplate | undefined = app.viewPartials.get("card");
 const packageName: string = packageMetadata.name;
 const viewData: ViewData = { layout: false, layoutData: { section: "card" } };
 app.get("/card", (request, reply) => reply.view("card", viewData));
+app.get("/card-fragment", async (request, reply) => {
+    const html: string = await reply.renderView("card", viewData);
+    return { html };
+});
 
 const generated = await compileClientModule({
     templates: { card: "<p>{{ it.name | uppercase }}</p>" },

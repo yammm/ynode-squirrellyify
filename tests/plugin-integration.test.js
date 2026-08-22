@@ -34,7 +34,7 @@ function createFastifyHarness(parent = null) {
         async register(options) {
             await squirrellyify(instance, options);
         },
-        async render(template, data = {}, replyOverrides = {}) {
+        async createReply(replyOverrides = {}) {
             const reply = {
                 request: { server: instance },
                 statusCode: 200,
@@ -62,9 +62,20 @@ function createFastifyHarness(parent = null) {
             }
             Object.assign(reply, replyOverrides);
             reply.view = replyDecorators.get("view");
+            reply.renderView = replyDecorators.get("renderView");
             assert.equal(typeof reply.view, "function");
+            assert.equal(typeof reply.renderView, "function");
+            return reply;
+        },
+        async render(template, data = {}, replyOverrides = {}) {
+            const reply = await this.createReply(replyOverrides);
             await reply.view.call(reply, template, data);
             return reply;
+        },
+        async renderOnly(template, data = {}, replyOverrides = {}) {
+            const reply = await this.createReply(replyOverrides);
+            const html = await reply.renderView.call(reply, template, data);
+            return { html, reply };
         },
     };
 }
@@ -175,6 +186,45 @@ test("merges reply context and locals into view data with explicit data preceden
     assert.equal(
         rendered.payload,
         "<h1>Route Name</h1><p>Hello from locals</p><p>Context Title</p>",
+    );
+});
+
+test("renderView returns scoped layout HTML without changing or sending the reply", async (t) => {
+    const root = await createTempDir(t);
+    const defaultViews = path.join(root, "default-views");
+    const scopedViews = path.join(root, "scoped-views");
+    await writeTemplate(defaultViews, "page.sqrl", "<p>default</p>");
+    await writeTemplate(scopedViews, "page.sqrl", "<p>{{ it.name }}:{{ it.note }}</p>");
+    await writeTemplate(
+        scopedViews,
+        "layouts/card.sqrl",
+        '<article class="{{ it.kind }}">{{ it.body | safe }}</article>',
+    );
+
+    const harness = createFastifyHarness();
+    await harness.register({ templates: defaultViews });
+    harness.instance.views = scopedViews;
+    harness.instance.layout = "layouts/card";
+    const { html, reply } = await harness.renderOnly(
+        "page",
+        { name: "Route", layoutData: { kind: "summary" } },
+        {
+            context: { note: "context" },
+            locals: { name: "Local" },
+        },
+    );
+
+    assert.equal(html, '<article class="summary"><p>Route:context</p></article>');
+    assert.equal(reply.statusCode, 200);
+    assert.equal(reply.contentType, undefined);
+    assert.equal(reply.payload, undefined);
+
+    await assert.rejects(
+        () => harness.renderOnly("page", { layout: "layouts/missing" }),
+        (error) =>
+            error.code === "ERR_SQUIRRELLYIFY_LAYOUT_NOT_FOUND" &&
+            error.message === 'Layout "layouts/missing" not found.' &&
+            !error.message.includes(root),
     );
 });
 
@@ -416,15 +466,14 @@ test("viewCache.clear invalidates cached templates after file changes", async (t
         cache: true,
     });
 
-    const first = await app.render("page");
-    assert.equal(first.statusCode, 200);
-    assert.equal(first.payload, "<h1>Version A</h1>");
+    const first = await app.renderOnly("page");
+    assert.equal(first.html, "<h1>Version A</h1>");
+    assert.equal(first.reply.payload, undefined);
 
     await writeTemplate(viewsDir, "page.sqrl", "<h1>Version B</h1>");
 
-    const cached = await app.render("page");
-    assert.equal(cached.statusCode, 200);
-    assert.equal(cached.payload, "<h1>Version A</h1>");
+    const cached = await app.renderOnly("page");
+    assert.equal(cached.html, "<h1>Version A</h1>");
     assert.equal(typeof app.instance.viewCache.clear, "function");
     assert.equal(typeof app.instance.viewCache.stats, "function");
 
@@ -439,9 +488,8 @@ test("viewCache.clear invalidates cached templates after file changes", async (t
     assert.equal(after.paths, 0);
     assert.equal(after.metadata, 0);
 
-    const fresh = await app.render("page");
-    assert.equal(fresh.statusCode, 200);
-    assert.equal(fresh.payload, "<h1>Version B</h1>");
+    const fresh = await app.renderOnly("page");
+    assert.equal(fresh.html, "<h1>Version B</h1>");
 });
 
 test("does not resolve page templates from partial directories", async (t) => {

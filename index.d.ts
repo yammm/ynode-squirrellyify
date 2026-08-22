@@ -225,6 +225,12 @@ declare module "fastify" {
         context: Record<string, unknown>;
 
         /**
+         * Render a Squirrelly template to HTML without sending a response or
+         * changing reply status and headers. Rendering errors reject normally.
+         */
+        renderView(template: string, data?: ViewData): Promise<string>;
+
+        /**
          * Render a Squirrelly template and send it as an HTML response.
          * @param template - Template name (without extension).
          * @param data - Data to pass to the template. Set `layout: false` to

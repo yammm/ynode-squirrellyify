@@ -47,6 +47,10 @@ import {
 import { createRuntimeApi } from "./runtime-api.js";
 import { assertSafeName } from "./safety.js";
 
+const LAYOUT_NOT_FOUND_CODE = "ERR_SQUIRRELLYIFY_LAYOUT_NOT_FOUND";
+const PRODUCTION_RENDER_ERROR_CODE = "ERR_SQUIRRELLYIFY_RENDER";
+const TEMPLATE_NOT_FOUND_CODE = "ERR_SQUIRRELLYIFY_TEMPLATE_NOT_FOUND";
+
 /**
  * @typedef {object} FastifyInstance
  * @typedef {object} FastifyReply
@@ -54,8 +58,40 @@ import { assertSafeName } from "./safety.js";
  */
 
 /**
- * This plugin adds a "view" decorator to the Fastify reply object,
- * allowing for the rendering of Squirrelly templates with support for layouts and partials.
+ * Creates a path-safe missing-view error while retaining internal search
+ * details in its cause for structured logging and explicit error handlers.
+ *
+ * @param {"Layout"|"Template"} kind Missing resource kind.
+ * @param {string} name Requested view name.
+ * @param {string[]} searchDirectories Internal directories that were searched.
+ * @returns {Error} Coded public error.
+ */
+function createMissingViewError(kind, name, searchDirectories) {
+    const detail = new Error(
+        `${kind} "${name}" was not found in [${searchDirectories.join(", ")}].`,
+    );
+    const error = new Error(`${kind} "${name}" not found.`, { cause: detail });
+    error.code = kind === "Template" ? TEMPLATE_NOT_FOUND_CODE : LAYOUT_NOT_FOUND_CODE;
+    return error;
+}
+
+/**
+ * Wraps a render failure with a production-safe public message while retaining
+ * the original failure as its cause.
+ *
+ * @param {*} cause Original render failure.
+ * @returns {Error} Generic coded render error.
+ */
+function createProductionRenderError(cause) {
+    const error = new Error("An internal server error occurred.", { cause });
+    error.code = PRODUCTION_RENDER_ERROR_CODE;
+    return error;
+}
+
+/**
+ * This plugin adds `view` and `renderView` decorators to the Fastify reply
+ * object, allowing Squirrelly templates to be sent or composed with support
+ * for layouts and partials.
  *
  * @param {FastifyInstance} fastify The Fastify instance.
  * @param {object} options Plugin options.
@@ -135,79 +171,106 @@ async function squirrellyify(fastify, options = {}) {
         });
 
     /**
-     * Renders a Squirrelly template and sends it as an HTML response.
+     * Renders a Squirrelly template to HTML without changing reply status,
+     * headers, or sent state. Rendering errors reject so callers can delegate
+     * them to Fastify or handle them explicitly.
+     *
      * @this {FastifyReply}
      * @param {string} template The name of the template file (without extension).
      * @param {object} [data={}] The data to pass to the template. `layout` and `layoutData` are reserved rendering controls and must not come from untrusted input.
+     * @returns {Promise<string>} Fully rendered page and optional layout HTML.
+     */
+    async function renderViewHtml(template, data = {}) {
+        const requestData = data && typeof data === "object" ? data : {};
+        const replyContext = this.context && typeof this.context === "object" ? this.context : {};
+        const replyLocals = this.locals && typeof this.locals === "object" ? this.locals : {};
+        const mergedData = {
+            ...replyContext,
+            ...replyLocals,
+            ...requestData,
+        };
+
+        assertSafeName(template);
+        // `layout: false` (and any other falsy value) opts out of layout
+        // rendering below, so only a truthy layout name needs validating.
+        if (mergedData.layout) {
+            assertSafeName(mergedData.layout);
+        }
+
+        const instance = this.request.server;
+        const { aggregatedTemplatesDirs, scopedLayout } = collectViewScope(instance);
+        const templateSearchDirs = buildTemplateSearchDirs(
+            aggregatedTemplatesDirs,
+            initialTemplatesDirs,
+        );
+
+        // 1. Find and render the page template.
+        const pagePath = await findTemplatePath(template, templateSearchDirs);
+        if (!pagePath) {
+            throw createMissingViewError("Template", template, templateSearchDirs);
+        }
+
+        const pageTemplate = await getTemplate(pagePath);
+        const pageHtml = await pageTemplate(mergedData, sqrlConfig);
+
+        // 2. Determine which layout to use.
+        // Layout precedence: route data (layout: false) > reply scoped > plugin default.
+        const currentLayout = scopedLayout ?? initialLayout;
+        const layoutFile = mergedData.layout === false ? null : mergedData.layout || currentLayout;
+
+        if (!layoutFile || hasLayoutTag(pagePath)) {
+            return pageHtml;
+        }
+
+        // 3. Find and render the layout, injecting the page content.
+        const layoutPath = await findTemplatePath(layoutFile, templateSearchDirs);
+        if (!layoutPath) {
+            throw createMissingViewError("Layout", layoutFile, templateSearchDirs);
+        }
+
+        const layoutTemplate = await getTemplate(layoutPath);
+        const layoutPayload =
+            mergedData.layoutData && typeof mergedData.layoutData === "object"
+                ? mergedData.layoutData
+                : {};
+        const layoutData = { ...mergedData, ...layoutPayload, body: pageHtml };
+        return layoutTemplate(layoutData, sqrlConfig);
+    }
+
+    /**
+     * Renders a Squirrelly template without sending it. Development errors
+     * retain path-safe diagnostics; production errors use a generic public
+     * wrapper and retain the original failure as `cause`.
+     *
+     * @this {FastifyReply}
+     * @param {string} template The name of the template file (without extension).
+     * @param {object} [data={}] The data to pass to the template.
+     * @returns {Promise<string>} Fully rendered page and optional layout HTML.
+     */
+    async function renderView(template, data = {}) {
+        try {
+            return await renderViewHtml.call(this, template, data);
+        } catch (error) {
+            if (isProduction) {
+                throw createProductionRenderError(error);
+            }
+            throw error;
+        }
+    }
+
+    /**
+     * Renders a Squirrelly template and sends it as an HTML response while
+     * preserving the plugin's existing error response behavior.
+     *
+     * @this {FastifyReply}
+     * @param {string} template The name of the template file (without extension).
+     * @param {object} [data={}] The data to pass to the template.
+     * @returns {Promise<FastifyReply|void>} Resolves after the response has been sent.
      */
     async function view(template, data = {}) {
         try {
-            const requestData = data && typeof data === "object" ? data : {};
-            const replyContext =
-                this.context && typeof this.context === "object" ? this.context : {};
-            const replyLocals = this.locals && typeof this.locals === "object" ? this.locals : {};
-            const mergedData = {
-                ...replyContext,
-                ...replyLocals,
-                ...requestData,
-            };
-
-            assertSafeName(template);
-            // `layout: false` (and any other falsy value) opts out of layout
-            // rendering below, so only a truthy layout name needs validating.
-            if (mergedData.layout) {
-                assertSafeName(mergedData.layout);
-            }
-
-            const instance = this.request.server;
-            const { aggregatedTemplatesDirs, scopedLayout } = collectViewScope(instance);
-            const templateSearchDirs = buildTemplateSearchDirs(
-                aggregatedTemplatesDirs,
-                initialTemplatesDirs,
-            );
-
-            // 1. Find and render the page template
-            const pagePath = await findTemplatePath(template, templateSearchDirs);
-            if (!pagePath) {
-                throw new Error(
-                    `Template "${template}" not found in [${templateSearchDirs.join(", ")}]`,
-                );
-            }
-
-            const pageTemplate = await getTemplate(pagePath);
-            const pageHtml = await pageTemplate(mergedData, sqrlConfig);
-
-            // 2. Determine which layout to use.
-            // Layout precedence: route data (layout: false) > reply scoped > plugin default
-            const currentLayout = scopedLayout ?? initialLayout;
-            const layoutFile =
-                mergedData.layout === false ? null : mergedData.layout || currentLayout;
-
-            if (!layoutFile) {
-                return this.type("text/html; charset=utf-8").send(pageHtml);
-            }
-
-            if (hasLayoutTag(pagePath)) {
-                return this.type("text/html; charset=utf-8").send(pageHtml);
-            }
-
-            // 3. Find and render the layout, injecting the page content
-            const layoutPath = await findTemplatePath(layoutFile, templateSearchDirs);
-            if (!layoutPath) {
-                throw new Error(
-                    `Layout "${layoutFile}" not found in [${templateSearchDirs.join(", ")}]`,
-                );
-            }
-
-            const layoutTemplate = await getTemplate(layoutPath);
-            const layoutPayload =
-                mergedData.layoutData && typeof mergedData.layoutData === "object"
-                    ? mergedData.layoutData
-                    : {};
-            const layoutData = { ...mergedData, ...layoutPayload, body: pageHtml };
-            const finalHtml = await layoutTemplate(layoutData, sqrlConfig);
-
-            return this.type("text/html; charset=utf-8").send(finalHtml);
+            const html = await renderView.call(this, template, data);
+            return this.type("text/html; charset=utf-8").send(html);
         } catch (error) {
             // Request-scoped logging keeps the reqId on render failures; the
             // registration-scoped child logger remains the fallback and stays
@@ -236,7 +299,8 @@ async function squirrellyify(fastify, options = {}) {
         reply.context = {};
     });
 
-    // Decorate the reply object with the main view function
+    // Decorate the reply object with render-only and send helpers.
+    fastify.decorateReply("renderView", renderView);
     fastify.decorateReply("view", view);
 
     // Decorate the fastify instance so users can override settings in different scopes

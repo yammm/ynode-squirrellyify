@@ -56,6 +56,32 @@ test("fastify inject: renders nested template path with layout", async (t) => {
     assert.equal(response.payload, "<main><h1>Hello World</h1></main>");
 });
 
+test("fastify inject: renderView returns composable HTML without sending", async (t) => {
+    const root = await createTempDir(t);
+    const viewsDir = path.join(root, "views");
+    await writeTemplate(viewsDir, "layouts/main.sqrl", "<main>{{it.body | safe}}</main>");
+    await writeTemplate(viewsDir, "page.sqrl", "<p>{{ it.name }}</p>");
+
+    const app = Fastify();
+    t.after(async () => {
+        await app.close();
+    });
+    await app.register(squirrellyify, {
+        templates: viewsDir,
+        layout: "layouts/main",
+    });
+    app.get("/", async (request, reply) => {
+        const html = await reply.renderView("page", { name: "Composable" });
+        assert.equal(reply.sent, false);
+        assert.equal(reply.getHeader("content-type"), undefined);
+        return { html };
+    });
+
+    const response = await app.inject({ method: "GET", url: "/" });
+    assert.match(response.headers["content-type"] ?? "", /^application\/json/u);
+    assert.deepEqual(response.json(), { html: "<main><p>Composable</p></main>" });
+});
+
 test("fastify inject: resolves nearest scoped view decorators through inheritance", async (t) => {
     const root = await createTempDir(t);
     const defaultViews = path.join(root, "default-views");
@@ -115,6 +141,74 @@ test("development render errors flow through the configured Fastify error handle
     assert.equal(response.statusCode, 598);
     assert.match(handledError?.message ?? "", /Template "missing" not found/u);
     assert.deepEqual(response.json(), { message: handledError.message });
+});
+
+test("renderView rejections flow directly through the Fastify error handler", async (t) => {
+    const root = await createTempDir(t);
+    const app = Fastify();
+    t.after(async () => {
+        await app.close();
+    });
+    let handledError;
+    app.setErrorHandler((error, request, reply) => {
+        handledError = error;
+        return reply.status(597).send({ code: error.code, message: error.message });
+    });
+    const previousNodeEnvironment = process.env.NODE_ENV;
+    process.env.NODE_ENV = "development";
+    try {
+        await app.register(squirrellyify, { templates: path.join(root, "views") });
+    } finally {
+        if (previousNodeEnvironment === undefined) {
+            delete process.env.NODE_ENV;
+        } else {
+            process.env.NODE_ENV = previousNodeEnvironment;
+        }
+    }
+    app.get("/missing", (request, reply) => reply.renderView("missing"));
+
+    const response = await app.inject({ method: "GET", url: "/missing" });
+    assert.equal(response.statusCode, 597);
+    assert.deepEqual(response.json(), {
+        code: "ERR_SQUIRRELLYIFY_TEMPLATE_NOT_FOUND",
+        message: 'Template "missing" not found.',
+    });
+    assert.equal(response.payload.includes(root), false);
+    assert.match(handledError?.cause?.message ?? "", /was not found in/u);
+});
+
+test("production renderView errors use a generic wrapper with the original cause", async (t) => {
+    const root = await createTempDir(t);
+    const app = Fastify();
+    t.after(async () => {
+        await app.close();
+    });
+    let handledError;
+    app.setErrorHandler((error, request, reply) => {
+        handledError = error;
+        return reply.status(596).send({ code: error.code, message: error.message });
+    });
+    const previousNodeEnvironment = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    try {
+        await app.register(squirrellyify, { templates: path.join(root, "views") });
+    } finally {
+        if (previousNodeEnvironment === undefined) {
+            delete process.env.NODE_ENV;
+        } else {
+            process.env.NODE_ENV = previousNodeEnvironment;
+        }
+    }
+    app.get("/missing", (request, reply) => reply.renderView("missing"));
+
+    const response = await app.inject({ method: "GET", url: "/missing" });
+    assert.equal(response.statusCode, 596);
+    assert.deepEqual(response.json(), {
+        code: "ERR_SQUIRRELLYIFY_RENDER",
+        message: "An internal server error occurred.",
+    });
+    assert.equal(response.payload.includes(root), false);
+    assert.equal(handledError?.cause?.code, "ERR_SQUIRRELLYIFY_TEMPLATE_NOT_FOUND");
 });
 
 test("fastify inject: merges reply locals into view data and keeps explicit data precedence", async (t) => {
