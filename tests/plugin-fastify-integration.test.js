@@ -56,6 +56,33 @@ test("fastify inject: renders nested template path with layout", async (t) => {
     assert.equal(response.payload, "<main><h1>Hello World</h1></main>");
 });
 
+test("fastify inject: resolves nearest scoped view decorators through inheritance", async (t) => {
+    const root = await createTempDir(t);
+    const defaultViews = path.join(root, "default-views");
+    const scopedViews = path.join(root, "scoped-views");
+    await writeTemplate(defaultViews, "page.sqrl", "<p>default</p>");
+    await writeTemplate(scopedViews, "page.sqrl", "<p>{{ it.label }}</p>");
+    await writeTemplate(scopedViews, "layouts/scoped.sqrl", "<main>{{ it.body | safe }}</main>");
+
+    const app = Fastify();
+    t.after(async () => {
+        await app.close();
+    });
+    await app.register(squirrellyify, { templates: defaultViews });
+    await app.register(
+        async (instance) => {
+            instance.views = scopedViews;
+            instance.layout = "layouts/scoped";
+            instance.get("/page", (request, reply) => reply.view("page", { label: "scoped" }));
+        },
+        { prefix: "/child" },
+    );
+
+    const response = await app.inject({ method: "GET", url: "/child/page" });
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.payload, "<main><p>scoped</p></main>");
+});
+
 test("development render errors flow through the configured Fastify error handler", async (t) => {
     const root = await createTempDir(t);
     const viewsDir = path.join(root, "views");

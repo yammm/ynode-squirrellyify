@@ -134,36 +134,22 @@ export async function preloadPartials({
 }
 
 /**
- * Collect encapsulated view dirs and layout overrides from current Fastify scope chain.
+ * Read the nearest view overrides from a Fastify scope. Decorators inherit
+ * through Fastify's scope prototype chain, so normal property lookup already
+ * resolves the nearest value without relying on a private parent link.
  *
  * @param {object} instance
  * @returns {{ aggregatedTemplatesDirs: string[], scopedLayout: string|null }}
  */
 export function collectViewScope(instance) {
-    const aggregatedTemplatesDirs = [];
-    let scopedLayout = null;
-    let currentInstance = instance;
-
-    while (currentInstance) {
-        if (currentInstance.views) {
-            const dirs = Array.isArray(currentInstance.views)
-                ? currentInstance.views
-                : [currentInstance.views];
-            aggregatedTemplatesDirs.push(...dirs);
-        }
-        if (
-            scopedLayout === null &&
-            currentInstance.layout !== null &&
-            currentInstance.layout !== undefined
-        ) {
-            scopedLayout = currentInstance.layout;
-        }
-        currentInstance = currentInstance.parent ?? null;
-    }
-
+    const aggregatedTemplatesDirs = instance.views
+        ? Array.isArray(instance.views)
+            ? instance.views
+            : [instance.views]
+        : [];
     return {
         aggregatedTemplatesDirs,
-        scopedLayout,
+        scopedLayout: instance.layout ?? null,
     };
 }
 
