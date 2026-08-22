@@ -149,7 +149,7 @@ export interface SquirrellyifyOptions {
 export interface ViewCacheControl {
     /** Clear all template, path, and metadata caches. */
     clear(): void;
-    /** Return cache hit counts and sizes. */
+    /** Return cache enablement and per-cache entry counts. */
     stats(): { enabled: boolean; templates: number; paths: number; metadata: number };
 }
 
