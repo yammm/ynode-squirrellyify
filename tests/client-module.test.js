@@ -324,7 +324,7 @@ test("allows templates in one module to include each other", async () => {
 test("reads explicitly declared template files", async (t) => {
     const dir = await createTempDir(t);
     const templatePath = path.join(dir, "summary.sqrl");
-    await fs.writeFile(templatePath, "<strong>{{ it.total }}</strong>", "utf8");
+    await fs.writeFile(templatePath, "<strong>{{ it.total }}</strong>", "utf-8");
 
     const source = await compileClientModule({
         templates: {
@@ -339,7 +339,7 @@ test("writes named client modules during a build", async (t) => {
     const dir = await createTempDir(t);
     const templatePath = path.join(dir, "views", "status.sqrl");
     await fs.mkdir(path.dirname(templatePath), { recursive: true });
-    await fs.writeFile(templatePath, "<span>{{ it.status }}</span>", "utf8");
+    await fs.writeFile(templatePath, "<span>{{ it.status }}</span>", "utf-8");
 
     const built = await buildClientModules({
         cwd: dir,
@@ -354,7 +354,7 @@ test("writes named client modules during a build", async (t) => {
     });
 
     const output = path.join(dir, "public", "sqrl", "status.js");
-    const source = await fs.readFile(output, "utf8");
+    const source = await fs.readFile(output, "utf-8");
     const declaration = path.join(dir, "public", "sqrl", "status.d.ts");
     const sourceMapPath = `${output}.map`;
     const originalMtime = (await fs.stat(output, { bigint: true })).mtimeNs;
@@ -364,18 +364,18 @@ test("writes named client modules during a build", async (t) => {
             output,
             bytes: Buffer.byteLength(source),
             declaration,
-            declarationBytes: Buffer.byteLength(await fs.readFile(declaration, "utf8")),
+            declarationBytes: Buffer.byteLength(await fs.readFile(declaration, "utf-8")),
             sourceMap: sourceMapPath,
-            sourceMapBytes: Buffer.byteLength(await fs.readFile(sourceMapPath, "utf8")),
+            sourceMapBytes: Buffer.byteLength(await fs.readFile(sourceMapPath, "utf-8")),
             written: true,
         },
     ]);
     assert.match(source, /\/\/# sourceMappingURL=status\.js\.map/);
     assert.match(
-        await fs.readFile(declaration, "utf8"),
+        await fs.readFile(declaration, "utf-8"),
         /badge\(data: Record<string, unknown>\): string/,
     );
-    const rawSourceMap = JSON.parse(await fs.readFile(sourceMapPath, "utf8"));
+    const rawSourceMap = JSON.parse(await fs.readFile(sourceMapPath, "utf-8"));
     const generatedLine = source.split("\n").findIndex((line) => line.includes("it.status"));
     const generatedColumn = source.split("\n")[generatedLine].indexOf("it.status");
     const mapped = new SourceMap(rawSourceMap).findEntry(generatedLine, generatedColumn);
@@ -412,10 +412,10 @@ test("emits promise-returning declarations for async client modules", async (t) 
         },
     });
     assert.match(
-        await fs.readFile(built.declaration, "utf8"),
+        await fs.readFile(built.declaration, "utf-8"),
         /page\(data: Record<string, unknown>\): Promise<string>/,
     );
-    const sourceMap = JSON.parse(await fs.readFile(built.sourceMap, "utf8"));
+    const sourceMap = JSON.parse(await fs.readFile(built.sourceMap, "utf-8"));
     assert.deepEqual(sourceMap.sources, ["squirrellyify:///asyncPage/page.sqrl"]);
 });
 
@@ -431,19 +431,19 @@ test("check mode reports stale artifacts without replacing existing output", asy
             },
         },
     };
-    await fs.writeFile(templatePath, "First", "utf8");
+    await fs.writeFile(templatePath, "First", "utf-8");
     const [built] = await buildClientModules(options);
-    const original = await fs.readFile(built.output, "utf8");
+    const original = await fs.readFile(built.output, "utf-8");
     const [checked] = await buildClientModules({ ...options, check: true });
     assert.equal(checked.written, false);
 
-    await fs.writeFile(templatePath, "Second", "utf8");
+    await fs.writeFile(templatePath, "Second", "utf-8");
     await assert.rejects(
         () => buildClientModules({ ...options, check: true }),
         (error) =>
             error.code === "ERR_CLIENT_MODULES_OUT_OF_DATE" && error.stale.includes(built.output),
     );
-    assert.equal(await fs.readFile(built.output, "utf8"), original);
+    assert.equal(await fs.readFile(built.output, "utf-8"), original);
 });
 
 test("supports custom declaration paths and source-map opt-out", async (t) => {
@@ -462,7 +462,7 @@ test("supports custom declaration paths and source-map opt-out", async (t) => {
 
     assert.equal(built.declaration, path.join(dir, "types", "page.generated.d.ts"));
     assert.equal(built.sourceMap, undefined);
-    assert.doesNotMatch(await fs.readFile(built.output, "utf8"), /sourceMappingURL/);
+    assert.doesNotMatch(await fs.readFile(built.output, "utf-8"), /sourceMappingURL/);
     await assert.rejects(() => fs.access(`${built.output}.map`), { code: "ENOENT" });
 });
 
@@ -472,7 +472,7 @@ test("CLI resolves template and output paths from its config file", async (t) =>
     const viewsDir = path.join(dir, "views");
     await fs.mkdir(buildDir, { recursive: true });
     await fs.mkdir(viewsDir, { recursive: true });
-    await fs.writeFile(path.join(viewsDir, "summary.sqrl"), "<b>{{ it.total }}</b>", "utf8");
+    await fs.writeFile(path.join(viewsDir, "summary.sqrl"), "<b>{{ it.total }}</b>", "utf-8");
     const configPath = path.join(buildDir, "squirrelly-client.config.mjs");
     await fs.writeFile(
         configPath,
@@ -484,7 +484,7 @@ test("CLI resolves template and output paths from its config file", async (t) =>
                 }
             }
         };`,
-        "utf8",
+        "utf-8",
     );
 
     const { stdout } = await execFileAsync(process.execPath, [CLI_PATH, configPath], {
@@ -492,7 +492,7 @@ test("CLI resolves template and output paths from its config file", async (t) =>
     });
     const output = path.join(dir, "public", "history.js");
     assert.equal(stdout.includes(`Built history: ${output}`), true);
-    const source = await fs.readFile(output, "utf8");
+    const source = await fs.readFile(output, "utf-8");
     const clientModule = await importModule(source);
     assert.equal(clientModule.render.summary({ total: 12 }), "<b>12</b>");
 
@@ -501,7 +501,7 @@ test("CLI resolves template and output paths from its config file", async (t) =>
     });
     assert.match(checked.stdout, /Checked history:/);
 
-    await fs.writeFile(path.join(viewsDir, "summary.sqrl"), "<i>{{ it.total }}</i>", "utf8");
+    await fs.writeFile(path.join(viewsDir, "summary.sqrl"), "<i>{{ it.total }}</i>", "utf-8");
     await assert.rejects(
         () =>
             execFileAsync(process.execPath, [CLI_PATH, "--check", configPath], {
@@ -515,7 +515,7 @@ test("compiles every module before replacing existing build output", async (t) =
     const dir = await createTempDir(t);
     const output = path.join(dir, "public", "first.js");
     await fs.mkdir(path.dirname(output), { recursive: true });
-    await fs.writeFile(output, "existing output", "utf8");
+    await fs.writeFile(output, "existing output", "utf-8");
 
     await assert.rejects(
         () =>
@@ -536,7 +536,7 @@ test("compiles every module before replacing existing build output", async (t) =
             }),
         /invalid conditional block "elseif"/,
     );
-    assert.equal(await fs.readFile(output, "utf8"), "existing output");
+    assert.equal(await fs.readFile(output, "utf-8"), "existing output");
     await assert.rejects(() => fs.access(path.join(dir, "public", "second.js")), {
         code: "ENOENT",
     });

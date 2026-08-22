@@ -147,7 +147,7 @@ async function readTemplate(input, name) {
     if (hasSource) {
         return { source: input.source };
     }
-    return { source: await fs.readFile(input.file, "utf8"), file: path.resolve(input.file) };
+    return { source: await fs.readFile(input.file, "utf-8"), file: path.resolve(input.file) };
 }
 
 function validateTemplateAst(
@@ -688,7 +688,7 @@ function sourceMapSource(module, compiled) {
 
 async function readExistingSource(file) {
     try {
-        return await fs.readFile(file, "utf8");
+        return await fs.readFile(file, "utf-8");
     } catch (error) {
         if (error.code === "ENOENT") {
             return null;
@@ -703,7 +703,7 @@ async function writeArtifactsAtomically(artifacts) {
         for (const artifact of artifacts) {
             await fs.mkdir(path.dirname(artifact.path), { recursive: true });
             const temporaryPath = `${artifact.path}.${process.pid}.${randomUUID()}.tmp`;
-            await fs.writeFile(temporaryPath, artifact.source, "utf8");
+            await fs.writeFile(temporaryPath, artifact.source, "utf-8");
             staged.push({ ...artifact, temporaryPath });
         }
         for (const artifact of staged) {

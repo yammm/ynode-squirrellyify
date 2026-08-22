@@ -69,7 +69,7 @@ const jsdoc = {
         destination: temporaryOutdir,
         recurse: true,
         readme: "README.md",
-        encoding: "utf8",
+        encoding: "utf-8",
         lenient: true,
     },
     plugins: ["plugins/markdown"],
@@ -87,7 +87,7 @@ const jsdoc = {
 };
 
 try {
-    writeFileSync(jsdocConfigPath, JSON.stringify(jsdoc, null, 4) + "\n", "utf8");
+    writeFileSync(jsdocConfigPath, JSON.stringify(jsdoc, null, 4) + "\n", "utf-8");
 
     const jsdocBin = resolve(process.cwd(), "node_modules", "jsdoc", "jsdoc.js");
     if (!existsSync(jsdocBin)) {

@@ -8,7 +8,7 @@ try {
         "git",
         ["diff", "--cached", "--name-only", "--diff-filter=ACMRTUXB", "-z"],
         {
-            encoding: "utf8",
+            encoding: "utf-8",
         },
     );
     const files = stagedOutput.split("\0").filter(Boolean);

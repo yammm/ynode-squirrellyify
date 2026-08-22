@@ -80,7 +80,7 @@ async function createTempDir(t) {
 async function writeTemplate(baseDir, relativePath, content) {
     const fullPath = path.join(baseDir, relativePath);
     await fs.mkdir(path.dirname(fullPath), { recursive: true });
-    await fs.writeFile(fullPath, content, "utf8");
+    await fs.writeFile(fullPath, content, "utf-8");
 }
 
 test("re-reads edited templates on every request when caching is disabled", async (t) => {
