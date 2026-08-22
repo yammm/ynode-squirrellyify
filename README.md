@@ -460,6 +460,8 @@ fastify.register(
 
 You can extend Squirrelly with custom helper and filter functions via the `sqrl` option.
 
+Helpers receive a Squirrelly content object — `{ params, exec }` — plus an array of blocks, so they can run their body once per iteration. Plain value transforms such as `capitalize` belong in `filters`, which do receive the piped value and any arguments directly.
+
 Use `sqrl.scope` to choose registration mode:
 
 - `global` (default): helpers, filters, and partials are shared across plugin registrations.
@@ -472,14 +474,21 @@ fastify.register(squirrellyify, {
     templates: "views",
     sqrl: {
         helpers: {
-            capitalize: (str) => {
-                return str.charAt(0).toUpperCase() + str.slice(1);
+            // {{@repeat(3) => index}}<li>Row {{index}}</li>{{/repeat}}
+            repeat: (content) => {
+                const [count] = content.params;
+                let result = "";
+                for (let index = 0; index < count; ++index) {
+                    result += content.exec(index);
+                }
+                return result;
             },
         },
         filters: {
-            truncate: (str, len) => {
-                return str.length > len ? str.substring(0, len) + "..." : str;
-            },
+            // {{ it.name | capitalize }}
+            capitalize: (str) => str.charAt(0).toUpperCase() + str.slice(1),
+            // {{ it.name | truncate(3) }}
+            truncate: (str, len) => (str.length > len ? `${str.substring(0, len)}...` : str),
         },
     },
 });
