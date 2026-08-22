@@ -1,6 +1,6 @@
 {
     "name": "@ynode/squirrellyify",
-    "version": "1.11.0+336753",
+    "version": "1.11.0+336790",
     "description": "Fastify 5 plugin for rendering Squirrelly templates with layout support, partials, and scoped configuration.",
     "main": "src/plugin.js",
     "types": "index.d.ts",
@@ -46,6 +46,7 @@
         "@eslint/json": "^2.0.1",
         "@eslint/markdown": "^8.0.3",
         "@mikinho/autover": "^3.1.1",
+        "@types/node": "^20.19.43",
         "auto-changelog": "^2.6.0",
         "eslint": "^10.9.0",
         "eslint-config-prettier": "^10.1.8",
@@ -54,7 +55,8 @@
         "globals": "^17.11.0",
         "jsdoc": "^4.0.5",
         "prettier": "^3.9.6",
-        "rimraf": "^6.1.3"
+        "rimraf": "^6.1.3",
+        "typescript": "^7.0.2"
     },
     "scripts": {
         "changelog": "auto-changelog -p",
@@ -68,10 +70,11 @@
         "lint:fix": "eslint . --fix",
         "test:integration": "node --test",
         "test:staged": "node scripts/lint-staged.mjs",
+        "typecheck": "node scripts/check-types.mjs",
         "ver:preview": "npx autover --no-amend --dry-run --short",
         "ver:apply": "npx autover --guard-unchanged --short",
         "test": "node --test && npm run docs:check",
-        "prepublishOnly": "npm run format:check && npm run lint && npm test && npm run docs",
+        "prepublishOnly": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run docs",
         "postversion": "git push && git push --tags"
     },
     "publishConfig": {
@@ -81,6 +84,7 @@
         "index.d.ts",
         "src",
         "README.md",
+        "CHANGELOG.md",
         "LICENSE"
     ],
     "dependencies": {
