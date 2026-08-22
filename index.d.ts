@@ -1,5 +1,16 @@
 import type { FastifyPluginAsync } from "fastify";
 
+type SqrlModule = typeof import("squirrelly");
+
+/** A custom Squirrelly helper callback. */
+export type SqrlHelper = Parameters<SqrlModule["helpers"]["define"]>[1];
+
+/** A custom Squirrelly filter callback. */
+export type SqrlFilter = Parameters<SqrlModule["filters"]["define"]>[1];
+
+/** A compiled Squirrelly template callback. */
+export type SqrlTemplate = Parameters<SqrlModule["templates"]["define"]>[1];
+
 export type ClientTemplateInput =
     string | { source: string; file?: never } | { file: string; source?: never };
 
@@ -13,10 +24,10 @@ export interface CompileClientModuleOptions {
     templates: Record<string, ClientTemplateInput>;
 
     /** Pure, browser-safe custom Squirrelly helpers. Async helpers require `config.async`. */
-    helpers?: Record<string, (...args: unknown[]) => unknown | Promise<unknown>>;
+    helpers?: Record<string, SqrlHelper>;
 
     /** Pure, browser-safe custom Squirrelly filters. Async filters require `config.async`. */
-    filters?: Record<string, (...args: unknown[]) => unknown | Promise<unknown>>;
+    filters?: Record<string, SqrlFilter>;
 
     /** Supported Squirrelly compile configuration overrides, including explicit async mode. */
     config?: ClientCompileConfig;
@@ -59,7 +70,7 @@ export interface BuiltClientModule {
     written: boolean;
 }
 
-/** Compile and atomically write static client render modules during an asset build. */
+/** Compile and write static client render modules using per-file atomic replacement. */
 export function buildClientModules(
     options: BuildClientModulesOptions,
 ): Promise<BuiltClientModule[]>;
@@ -75,10 +86,10 @@ export interface SqrlEngineOptions {
     config?: Record<string, unknown>;
 
     /** Custom Squirrelly helpers keyed by name. */
-    helpers?: Record<string, (...args: unknown[]) => unknown>;
+    helpers?: Record<string, SqrlHelper>;
 
     /** Custom Squirrelly filters keyed by name. */
-    filters?: Record<string, (...args: unknown[]) => unknown>;
+    filters?: Record<string, SqrlFilter>;
 }
 
 export interface PartialsDirEntry {
@@ -153,9 +164,9 @@ export interface ViewCacheControl {
     stats(): { enabled: boolean; templates: number; paths: number; metadata: number };
 }
 
-export interface ViewStoreApi<T = (...args: unknown[]) => unknown> {
-    define(name: string, value: T): void;
-    get(name: string): T | undefined;
+export interface ViewStoreApi<DefineValue = SqrlHelper, StoredValue = DefineValue> {
+    define(name: string, value: DefineValue): void;
+    get(name: string): StoredValue | undefined;
     remove(name: string): void;
 }
 
@@ -171,13 +182,13 @@ declare module "fastify" {
         layout: string | null;
 
         /** Runtime helper management API. */
-        viewHelpers: ViewStoreApi;
+        viewHelpers: ViewStoreApi<SqrlHelper>;
 
         /** Runtime filter management API. */
-        viewFilters: ViewStoreApi;
+        viewFilters: ViewStoreApi<SqrlFilter>;
 
         /** Runtime partial/template management API. */
-        viewPartials: ViewStoreApi;
+        viewPartials: ViewStoreApi<string | SqrlTemplate, SqrlTemplate>;
 
         /** Template cache management. */
         viewCache: ViewCacheControl;
