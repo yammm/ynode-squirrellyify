@@ -741,3 +741,23 @@ test("layout false in view data suppresses the default layout", async (t) => {
     assert.equal(bare.statusCode, 200);
     assert.equal(bare.payload, "<p>x</p>");
 });
+
+test("server rendering escapes output by default and honors the safe bypass", async (t) => {
+    const root = await createTempDir(t);
+    const viewsDir = path.join(root, "views");
+    await writeTemplate(viewsDir, "escaped.sqrl", "<p>{{ it.payload }}</p>");
+    await writeTemplate(viewsDir, "raw.sqrl", "<p>{{ it.payload | safe }}</p>");
+
+    const harness = createFastifyHarness();
+    await harness.register({ templates: viewsDir });
+
+    const payload = "<script>alert(\"x\")</script> & 'quotes'";
+    const escaped = await harness.render("escaped", { payload });
+    assert.equal(
+        escaped.payload,
+        "<p>&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt; &amp; &#39;quotes&#39;</p>",
+    );
+
+    const raw = await harness.render("raw", { payload });
+    assert.equal(raw.payload, `<p>${payload}</p>`);
+});
