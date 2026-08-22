@@ -150,7 +150,7 @@ async function readTemplate(input, name) {
     return { source: await fs.readFile(input.file, "utf-8"), file: path.resolve(input.file) };
 }
 
-function validateTemplateAst(
+function validateTemplateAst({
     name,
     source,
     config,
@@ -158,7 +158,7 @@ function validateTemplateAst(
     filterNames,
     asyncHelpers,
     asyncFilters,
-) {
+}) {
     const ast = Sqrl.parse(source, config);
     function validateNodes(nodes) {
         let containsAwait = false;
@@ -566,15 +566,15 @@ async function compileClientModuleArtifacts(options = {}) {
     const markerRecords = [];
     const compiled = [];
     for (const [sourceIndex, template] of templatesWithSource.entries()) {
-        validateTemplateAst(
-            template.name,
-            template.source,
+        validateTemplateAst({
+            name: template.name,
+            source: template.source,
             config,
             helperNames,
             filterNames,
             asyncHelpers,
             asyncFilters,
-        );
+        });
         const instrumented = instrumentTemplateSource(
             template.source,
             config,
