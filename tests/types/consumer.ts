@@ -7,6 +7,7 @@ import squirrellyify, {
     type SqrlFilter,
     type SqrlHelper,
     type SqrlTemplate,
+    type ClientDeclarationTypes,
     type ViewData,
 } from "@ynode/squirrellyify";
 import packageMetadata from "@ynode/squirrellyify/package.json" with { type: "json" };
@@ -38,6 +39,19 @@ const generated = await compileClientModule({
     helpers: { repeat },
     filters: { uppercase },
 });
+const declarationTypes = {
+    card: { name: "CardViewData", from: "../view-models.js" },
+} satisfies ClientDeclarationTypes;
+const typedBuild = buildClientModules({
+    modules: {
+        card: {
+            output: "public/card.js",
+            templates: { card: "<p>{{ it.name }}</p>" },
+            declarationTypes,
+        },
+    },
+    check: true,
+});
 
-void [namedSquirrellyify, buildClientModules, compiledPartial, generated, packageName, viewData];
+void [namedSquirrellyify, compiledPartial, generated, packageName, typedBuild, viewData];
 await app.close();

@@ -88,6 +88,17 @@ async function main() {
             path.join(repositoryRoot, "tests/types/tsconfig.json"),
             path.join(consumerDirectory, "tsconfig.json"),
         );
+        for (const file of [
+            "default-view-model.d.ts",
+            "generate.mjs",
+            "generated-consumer.ts",
+            "view-models.d.ts",
+        ]) {
+            await fs.copyFile(
+                path.join(repositoryRoot, "tests/types", file),
+                path.join(consumerDirectory, file),
+            );
+        }
 
         await run(
             npmCommand,
@@ -103,6 +114,7 @@ async function main() {
             consumerDirectory,
             npmEnvironment,
         );
+        await run(process.execPath, ["generate.mjs"], consumerDirectory, npmEnvironment);
         await run(
             process.execPath,
             [

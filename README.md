@@ -190,6 +190,34 @@ Each built module emits three artifacts by default:
 
 Set `declaration: false` or `sourceMap: false` on a module to disable an artifact. A non-empty path writes that artifact to a custom location. Repeated builds compare complete contents and leave unchanged files untouched.
 
+Generated renderer parameters default to `Record<string, unknown>`. To make selected renderers accept application view-model types, map each template to a named type export and its module specifier:
+
+```javascript
+export default {
+    modules: {
+        invoiceHistory: {
+            output: "../public/invoice/sqrl/history.js",
+            templates: {
+                tableBody: { file: "../views/client/history/table-body.sqrl" },
+                summary: { file: "../views/client/history/summary.sqrl" },
+            },
+            declarationTypes: {
+                tableBody: {
+                    name: "HistoryRowsViewData",
+                    from: "../../../types/invoice-history.js",
+                },
+                summary: {
+                    name: "HistorySummaryViewData",
+                    from: "../../../types/invoice-history.js",
+                },
+            },
+        },
+    },
+};
+```
+
+The generated declaration uses `import type`, groups named imports deterministically, and assigns private generated aliases so exports named `Record`, `Promise`, or `render` cannot shadow declaration internals. Module specifiers are authored relative to the generated `.d.ts` file. Unmapped renderers retain the generic input type. Template names must exist in the module, and imported type names must be JavaScript identifier names.
+
 Use check mode in CI to verify committed generated artifacts without replacing them:
 
 ```shell

@@ -11,5 +11,5 @@
         "types": ["node"],
         "verbatimModuleSyntax": true
     },
-    "include": ["consumer.ts"]
+    "include": ["*.ts", "generated/**/*.d.ts"]
 }

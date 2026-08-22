@@ -36,12 +36,26 @@ export interface CompileClientModuleOptions {
 /** Compile named Squirrelly templates into one self-contained browser ES module. */
 export function compileClientModule(options: CompileClientModuleOptions): Promise<string>;
 
+export interface ClientDeclarationType {
+    /** Named type export used as the renderer's data parameter. */
+    name: string;
+
+    /** Module specifier resolved from the generated declaration file. */
+    from: string;
+}
+
+/** Template names mapped to imported renderer data types. */
+export type ClientDeclarationTypes = Record<string, ClientDeclarationType>;
+
 export interface BuildClientModuleInput extends CompileClientModuleOptions {
     /** Process- or build-config-relative generated ES module path. */
     output: string;
 
     /** Emit a generated declaration beside the module or at a custom path. @default true */
     declaration?: boolean | string;
+
+    /** Use named type imports for selected generated renderer data parameters. */
+    declarationTypes?: ClientDeclarationTypes;
 
     /** Emit a template source map beside the module or at a custom path. @default true */
     sourceMap?: boolean | string;
