@@ -323,6 +323,18 @@ You can specify a layout in three ways (in order of precedence):
     });
     ```
 
+    You can also pass layout-only data via `layoutData`. Its keys are merged over the page data when the layout itself renders; the page template does not see them:
+
+    ```javascript
+    fastify.get("/about", (request, reply) => {
+        return reply.view("about", {
+            title: "About Page",
+            layout: "layouts/main",
+            layoutData: { bodyClass: "about" },
+        });
+    });
+    ```
+
 2.  **As a default plugin option:**
 
     ```javascript

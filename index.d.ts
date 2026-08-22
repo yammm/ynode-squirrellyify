@@ -190,7 +190,10 @@ declare module "fastify" {
         /**
          * Render a Squirrelly template and send it as an HTML response.
          * @param template - Template name (without extension).
-         * @param data - Data to pass to the template. Set `layout: false` to disable layout.
+         * @param data - Data to pass to the template. Set `layout: false` to
+         * disable layout, or `layout: "name"` to select one for this request.
+         * A `layoutData` object supplies layout-only data merged over the page
+         * data when the layout itself renders.
          */
         view(template: string, data?: Record<string, unknown>): Promise<void>;
     }
