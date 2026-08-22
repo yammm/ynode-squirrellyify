@@ -179,11 +179,11 @@ async function squirrellyify(fastify, options = {}) {
                 mergedData.layout === false ? null : mergedData.layout || currentLayout;
 
             if (!layoutFile) {
-                return this.type("text/html").send(pageHtml);
+                return this.type("text/html; charset=utf-8").send(pageHtml);
             }
 
             if (hasLayoutTag(pagePath)) {
-                return this.type("text/html").send(pageHtml);
+                return this.type("text/html; charset=utf-8").send(pageHtml);
             }
 
             // 3. Find and render the layout, injecting the page content
@@ -202,7 +202,7 @@ async function squirrellyify(fastify, options = {}) {
             const layoutData = { ...mergedData, ...layoutPayload, body: pageHtml };
             const finalHtml = await layoutTemplate(layoutData, sqrlConfig);
 
-            return this.type("text/html").send(finalHtml);
+            return this.type("text/html; charset=utf-8").send(finalHtml);
         } catch (error) {
             // Request-scoped logging keeps the reqId on render failures; the
             // registration-scoped child logger remains the fallback and stays

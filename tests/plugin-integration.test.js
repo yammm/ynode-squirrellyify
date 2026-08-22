@@ -109,7 +109,7 @@ test("allows nested forward-slash template names and blocks traversal", async (t
 
     const ok = await app.render("pages/home", { name: "World" });
     assert.equal(ok.statusCode, 200);
-    assert.equal(ok.contentType, "text/html");
+    assert.equal(ok.contentType, "text/html; charset=utf-8");
     assert.equal(ok.payload, "<h1>Hello World</h1>");
 
     const blocked = await app.render("../secret", {});
