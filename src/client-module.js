@@ -283,11 +283,11 @@ const helpers = Object.freeze({
         const rows = content.params[0];
         if (content.async) return (async () => {
             let result = "";
-            for (let index = 0; index < rows.length; index += 1) result += await content.exec(rows[index], index);
+            for (let index = 0; index < rows.length; ++index) result += await content.exec(rows[index], index);
             return result;
         })();
         let result = "";
-        for (let index = 0; index < rows.length; index += 1) result += content.exec(rows[index], index);
+        for (let index = 0; index < rows.length; ++index) result += content.exec(rows[index], index);
         return result;
     },
     "foreach": (content, blocks) => {
@@ -491,7 +491,7 @@ function encodeSourceMapMappings(mappings) {
     let previousOriginalColumn = 0;
     let mappingIndex = 0;
 
-    for (let generatedLine = 0; generatedLine <= sorted.at(-1).generatedLine; generatedLine += 1) {
+    for (let generatedLine = 0; generatedLine <= sorted.at(-1).generatedLine; ++generatedLine) {
         const segments = [];
         let previousGeneratedColumn = 0;
         while (sorted[mappingIndex]?.generatedLine === generatedLine) {
@@ -506,7 +506,7 @@ function encodeSourceMapMappings(mappings) {
             previousSource = mapping.sourceIndex;
             previousOriginalLine = mapping.originalLine;
             previousOriginalColumn = mapping.originalColumn;
-            mappingIndex += 1;
+            ++mappingIndex;
         }
         lines.push(segments.join(","));
     }
