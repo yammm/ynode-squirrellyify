@@ -179,6 +179,24 @@ export function buildTemplateSearchDirs(scopedDirs, initialDirs) {
 }
 
 /**
+ * Matches layout-managing tags: an `@extends` helper or a `layout()` execution
+ * call, with optional whitespace and `{{-` / `{{_` trim openers. The
+ * whitespace tolerance matters because @ynode/sqrl-lint normalizes execution
+ * tags to `{{! layout("x") }}` — with a space after the prefix.
+ */
+const LAYOUT_TAG_PATTERN = /{{[-_]?\s*(?:@\s*extends|!\s*layout)\s*\(/;
+
+/**
+ * Detect whether template source manages its own layout.
+ *
+ * @param {string} content - Raw template source.
+ * @returns {boolean} Whether the template declares its own layout tag.
+ */
+export function detectLayoutTag(content) {
+    return LAYOUT_TAG_PATTERN.test(content);
+}
+
+/**
  * Build cached template loader / path resolver.
  *
  * @param {object} options
@@ -195,7 +213,7 @@ export function createTemplateResolver({ fastify, extensionWithDot, useCache, sq
 
     function compileAndCache(fullPath, content) {
         const compiled = Sqrl.compile(content, sqrlConfig);
-        const hasLayoutTag = /{{\s*(?:@\s*extends|!layout)\s*\(/.test(content);
+        const hasLayoutTag = detectLayoutTag(content);
         templateMeta.set(fullPath, { hasLayoutTag });
         // Always retain the compiled template. With caching disabled the
         // path cache stays off, so every request still re-reads the file
