@@ -8,6 +8,8 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import test from "node:test";
 
+import Sqrl from "squirrelly";
+
 import { buildClientModules, compileClientModule } from "../src/client-module.js";
 
 const execFileAsync = promisify(execFile);
@@ -630,4 +632,30 @@ test("rejects unsupported or incomplete client module definitions", async () => 
             }),
         /artifact collision/,
     );
+});
+
+test("client renders match server renders when a tag body contains the close delimiter in a string", async () => {
+    const source = 'A {{ it.a + "}} {{" }} B';
+    const data = { a: "v" };
+    const moduleSource = await compileClientModule({ templates: { page: source } });
+    const { render } = await importModule(moduleSource);
+    assert.equal(render.page(data), Sqrl.render(source, data));
+});
+
+test("client renders preserve whitespace-control trimming exactly like the server", async () => {
+    const cases = [
+        { source: "Hello   {{_ it.name }}!", data: { name: "World" } },
+        { source: "Hello\n{{- it.name }}!", data: { name: "World" } },
+        { source: "{{ it.name _}}   \n  tail", data: { name: "World" } },
+        {
+            source: "a   {{_ it.first _}}   b   {{_ it.second }}",
+            data: { first: "1", second: "2" },
+        },
+    ];
+
+    for (const { source, data } of cases) {
+        const moduleSource = await compileClientModule({ templates: { page: source } });
+        const { render } = await importModule(moduleSource);
+        assert.equal(render.page(data), Sqrl.render(source, data), `divergence for: ${source}`);
+    }
 });

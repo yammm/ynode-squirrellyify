@@ -333,6 +333,60 @@ function advancePosition(position, text) {
     position.column = lines.at(-1).length;
 }
 
+// The exact string, template-literal, and comment token boundaries used by
+// Squirrelly's parser (`Sqrl.parse`), so instrumented tag boundaries always
+// agree with the tokens the engine itself produces.
+const SINGLE_QUOTE_PATTERN = /'(?:\\[\s\w"'\\`]|[^\n\r'\\])*?'/g;
+const DOUBLE_QUOTE_PATTERN = /"(?:\\[\s\w"'\\`]|[^\n\r"\\])*?"/g;
+const TEMPLATE_LITERAL_PATTERN =
+    /`(?:\\[\s\S]|\${(?:[^{}]|{(?:[^{}]|{[^}]*})*})*}|(?!\${)[^\\`])*`/g;
+
+/**
+ * Find the index immediately after a tag's close delimiter, skipping the same
+ * quoted-string and comment tokens `Sqrl.parse` skips. A close delimiter
+ * inside a string literal — `{{ it.a + "}} {{" }}` — is therefore never
+ * mistaken for the tag boundary.
+ *
+ * @param {string} source Template source.
+ * @param {number} bodyStart Index immediately after the open delimiter.
+ * @param {string} closeTag Configured close delimiter.
+ * @returns {number} Index after the close delimiter, or -1 when unclosed.
+ */
+function findTagEnd(source, bodyStart, closeTag) {
+    let cursor = bodyStart;
+    while (cursor < source.length) {
+        const character = source[cursor];
+        if (character === "'" || character === '"' || character === "`") {
+            const pattern =
+                character === "'"
+                    ? SINGLE_QUOTE_PATTERN
+                    : character === '"'
+                      ? DOUBLE_QUOTE_PATTERN
+                      : TEMPLATE_LITERAL_PATTERN;
+            pattern.lastIndex = cursor;
+            const match = pattern.exec(source);
+            if (!match) {
+                return -1;
+            }
+            cursor = pattern.lastIndex;
+            continue;
+        }
+        if (character === "/" && source[cursor + 1] === "*") {
+            const commentEnd = source.indexOf("*/", cursor + 2);
+            if (commentEnd === -1) {
+                return -1;
+            }
+            cursor = commentEnd + 2;
+            continue;
+        }
+        if (source.startsWith(closeTag, cursor)) {
+            return cursor + closeTag.length;
+        }
+        ++cursor;
+    }
+    return -1;
+}
+
 function instrumentTemplateSource(source, config, sourceIndex, namespace, markerRecords) {
     const [openTag, closeTag] = config.tags;
     const execPrefix = config.prefixes.e;
@@ -346,7 +400,7 @@ function instrumentTemplateSource(source, config, sourceIndex, namespace, marker
             instrumented += source.slice(cursor);
             break;
         }
-        const tagEnd = source.indexOf(closeTag, tagStart + openTag.length);
+        const tagEnd = findTagEnd(source, tagStart + openTag.length, closeTag);
         if (tagEnd === -1) {
             instrumented += source.slice(cursor);
             break;
@@ -356,18 +410,25 @@ function instrumentTemplateSource(source, config, sourceIndex, namespace, marker
         instrumented += leading;
         advancePosition(position, leading);
 
+        // Duplicate the tag's leading whitespace-control character onto the
+        // marker tag. The marker splits the text node preceding the real tag,
+        // so without the copied control a `{{-` / `{{_` opener would trim the
+        // empty string between marker and tag instead of the original text.
+        const controlCharacter = source[tagStart + openTag.length];
+        const whitespaceControl =
+            controlCharacter === "-" || controlCharacter === "_" ? controlCharacter : "";
         const markerId = markerRecords.length;
         markerRecords.push({
             sourceIndex,
             originalLine: position.line,
             originalColumn: position.column,
         });
-        instrumented += `${openTag}${execPrefix}/*__SQUIRRELLYIFY_MAP_${namespace}_${markerId}__*/${closeTag}`;
+        instrumented += `${openTag}${whitespaceControl}${execPrefix}/*__SQUIRRELLYIFY_MAP_${namespace}_${markerId}__*/${closeTag}`;
 
-        const tag = source.slice(tagStart, tagEnd + closeTag.length);
+        const tag = source.slice(tagStart, tagEnd);
         instrumented += tag;
         advancePosition(position, tag);
-        cursor = tagEnd + closeTag.length;
+        cursor = tagEnd;
     }
     return instrumented;
 }
