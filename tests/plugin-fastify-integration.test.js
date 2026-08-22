@@ -56,6 +56,40 @@ test("fastify inject: renders nested template path with layout", async (t) => {
     assert.equal(response.payload, "<main><h1>Hello World</h1></main>");
 });
 
+test("development render errors flow through the configured Fastify error handler", async (t) => {
+    const root = await createTempDir(t);
+    const viewsDir = path.join(root, "views");
+    const app = Fastify();
+    t.after(async () => {
+        await app.close();
+    });
+
+    let handledError;
+    app.setErrorHandler((error, request, reply) => {
+        handledError = error;
+        return reply.status(598).send({ message: error.message });
+    });
+
+    const previousNodeEnvironment = process.env.NODE_ENV;
+    process.env.NODE_ENV = "development";
+    try {
+        await app.register(squirrellyify, { templates: viewsDir });
+    } finally {
+        if (previousNodeEnvironment === undefined) {
+            delete process.env.NODE_ENV;
+        } else {
+            process.env.NODE_ENV = previousNodeEnvironment;
+        }
+    }
+
+    app.get("/missing", (request, reply) => reply.view("missing"));
+    const response = await app.inject({ method: "GET", url: "/missing" });
+
+    assert.equal(response.statusCode, 598);
+    assert.match(handledError?.message ?? "", /Template "missing" not found/u);
+    assert.deepEqual(response.json(), { message: handledError.message });
+});
+
 test("fastify inject: merges reply locals into view data and keeps explicit data precedence", async (t) => {
     const root = await createTempDir(t);
     const viewsDir = path.join(root, "views");
