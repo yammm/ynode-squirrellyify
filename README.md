@@ -335,6 +335,8 @@ You can specify a layout in three ways (in order of precedence):
     });
     ```
 
+    `layout`, `layoutData`, and the layout's injected `body` value are reserved rendering keys. Build an allowlisted view model instead of spreading request bodies, query strings, or other untrusted objects into `reply.view()`: a caller-controlled `layout` can select any template inside the configured template roots. Path validation prevents traversal outside those roots, but it cannot decide which in-root layouts your application intends to expose.
+
 2.  **As a default plugin option:**
 
     ```javascript

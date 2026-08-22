@@ -164,6 +164,18 @@ export interface ViewCacheControl {
     stats(): { enabled: boolean; templates: number; paths: number; metadata: number };
 }
 
+/**
+ * Data exposed to a rendered page. `layout` and `layoutData` are reserved
+ * rendering controls; do not populate this object by spreading untrusted input.
+ */
+export interface ViewData extends Record<string, unknown> {
+    /** Select a layout for this render, or disable layouts with false. */
+    layout?: string | false;
+
+    /** Values visible only while rendering the selected layout. */
+    layoutData?: Record<string, unknown>;
+}
+
 export interface ViewStoreApi<DefineValue = SqrlHelper, StoredValue = DefineValue> {
     define(name: string, value: DefineValue): void;
     get(name: string): StoredValue | undefined;
@@ -206,7 +218,7 @@ declare module "fastify" {
          * A `layoutData` object supplies layout-only data merged over the page
          * data when the layout itself renders.
          */
-        view(template: string, data?: Record<string, unknown>): Promise<void>;
+        view(template: string, data?: ViewData): Promise<void>;
     }
 }
 

@@ -138,7 +138,7 @@ async function squirrellyify(fastify, options = {}) {
      * Renders a Squirrelly template and sends it as an HTML response.
      * @this {FastifyReply}
      * @param {string} template The name of the template file (without extension).
-     * @param {object} [data={}] The data to pass to the template. Can include a `layout` property to specify a layout file or set to `false` to disable layout for this request.
+     * @param {object} [data={}] The data to pass to the template. `layout` and `layoutData` are reserved rendering controls and must not come from untrusted input.
      */
     async function view(template, data = {}) {
         try {

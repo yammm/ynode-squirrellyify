@@ -7,6 +7,7 @@ import squirrellyify, {
     type SqrlFilter,
     type SqrlHelper,
     type SqrlTemplate,
+    type ViewData,
 } from "@ynode/squirrellyify";
 import packageMetadata from "@ynode/squirrellyify/package.json" with { type: "json" };
 
@@ -29,6 +30,8 @@ app.viewFilters.define("uppercase", uppercase);
 app.viewPartials.define("card", "<p>{{ it.name }}</p>");
 const compiledPartial: SqrlTemplate | undefined = app.viewPartials.get("card");
 const packageName: string = packageMetadata.name;
+const viewData: ViewData = { layout: false, layoutData: { section: "card" } };
+app.get("/card", (request, reply) => reply.view("card", viewData));
 
 const generated = await compileClientModule({
     templates: { card: "<p>{{ it.name | uppercase }}</p>" },
@@ -36,5 +39,5 @@ const generated = await compileClientModule({
     filters: { uppercase },
 });
 
-void [namedSquirrellyify, buildClientModules, compiledPartial, generated, packageName];
+void [namedSquirrellyify, buildClientModules, compiledPartial, generated, packageName, viewData];
 await app.close();
