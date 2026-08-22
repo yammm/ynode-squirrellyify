@@ -89,6 +89,9 @@ async function squirrellyify(fastify, options = {}) {
     const initialLayout = options.layout;
     const { extensionWithDot } = resolveExtension(options);
     const useCache = resolveUseCache(options);
+    // Resolved once at registration; render error responses must not change
+    // shape mid-flight because the environment variable was mutated later.
+    const isProduction = process.env.NODE_ENV === "production";
     const { sqrlScope, sqrlConfig } = resolveSqrlConfig(options);
     const {
         defineSqrlHelper,
@@ -210,7 +213,7 @@ async function squirrellyify(fastify, options = {}) {
             // registration-scoped child logger remains the fallback and stays
             // in use for registration-time messages.
             (this.request?.log ?? log).error(error);
-            if (process.env.NODE_ENV === "production") {
+            if (isProduction) {
                 // In production, send a generic error and don't leak details
                 this.status(500).send("An internal server error occurred.");
             } else {
