@@ -150,7 +150,9 @@ async function squirrellyify(fastify, options = {}) {
             };
 
             assertSafeName(template);
-            if (mergedData.layout && mergedData.layout !== false) {
+            // `layout: false` (and any other falsy value) opts out of layout
+            // rendering below, so only a truthy layout name needs validating.
+            if (mergedData.layout) {
                 assertSafeName(mergedData.layout);
             }
 

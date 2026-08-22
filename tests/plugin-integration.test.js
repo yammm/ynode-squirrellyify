@@ -724,3 +724,20 @@ test("render errors are logged through the request-scoped logger", async (t) => 
     assert.equal(logged.length, 1);
     assert.match(String(logged[0]), /not found/);
 });
+
+test("layout false in view data suppresses the default layout", async (t) => {
+    const root = await createTempDir(t);
+    const viewsDir = path.join(root, "views");
+    await writeTemplate(viewsDir, "page.sqrl", "<p>{{ it.label }}</p>");
+    await writeTemplate(viewsDir, "base.sqrl", "<main>{{ it.body | safe }}</main>");
+
+    const harness = createFastifyHarness();
+    await harness.register({ templates: viewsDir, layout: "base" });
+
+    const wrapped = await harness.render("page", { label: "x" });
+    assert.equal(wrapped.payload, "<main><p>x</p></main>");
+
+    const bare = await harness.render("page", { label: "x", layout: false });
+    assert.equal(bare.statusCode, 200);
+    assert.equal(bare.payload, "<p>x</p>");
+});
