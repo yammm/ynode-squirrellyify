@@ -3,7 +3,7 @@
 /*
 The MIT License (MIT)
 
-Copyright (c) 2025 Michael Welter <me@mikinho.com>
+Copyright (c) 2026 Michael Welter <me@mikinho.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in
@@ -30,11 +30,11 @@ import json from "@eslint/json";
 import markdown from "@eslint/markdown";
 import { defineConfig } from "eslint/config";
 import eslintConfigPrettier from "eslint-config-prettier";
-import pluginPrettier from "eslint-plugin-prettier";
 import simpleImportSort from "eslint-plugin-simple-import-sort";
 import globals from "globals";
 
 export default defineConfig([
+    // Global ignores — defined once, applied to every configuration block.
     {
         ignores: [
             "CHANGELOG.md",
@@ -43,72 +43,26 @@ export default defineConfig([
             "**/package-lock.json",
             "**/docs/**",
         ],
+    },
+    {
         linterOptions: { reportUnusedDisableDirectives: true },
     },
     {
-        files: ["**/js/*.js"],
-        ignores: [
-            "CHANGELOG.md",
-            "**/node_modules/**",
-            "**/*.min.js",
-            "**/package-lock.json",
-            "**/docs/**",
-        ],
-        plugins: { js, prettier: pluginPrettier, "simple-import-sort": simpleImportSort },
-        extends: ["js/recommended"],
-        languageOptions: {
-            globals: { ...globals.browser, ...globals.es2024 },
-        },
-        rules: {
-            "no-var": "error",
-            "prefer-const": ["error", { destructuring: "all" }],
-            "no-unused-vars": ["error", { args: "none", ignoreRestSiblings: true }],
-            "no-implicit-coercion": ["warn", { allow: ["!!"] }],
-            indent: ["error", 4, { SwitchCase: 1 }],
-            semi: ["error", "always"],
-            curly: ["error", "all"],
-            "brace-style": ["error", "1tbs", { allowSingleLine: false }],
-            quotes: ["error", "double", { avoidEscape: true, allowTemplateLiterals: true }],
-            "simple-import-sort/imports": [
-                "error",
-                {
-                    groups: [
-                        ["^\\u0000"],
-                        [`^node:(?!test$)`, `^node:test$`, `^(${builtinModules.join("|")})(/|$)`],
-                        ["^@?\\w"],
-                        ["^.*core(/|$)"],
-                        ["^\\."],
-                    ],
-                },
-            ],
-            "simple-import-sort/exports": "error",
-        },
-    },
-    {
         files: ["**/*.{js,mjs,cjs}"],
-        ignores: [
-            "CHANGELOG.md",
-            "**/js/*.js",
-            "**/node_modules/**",
-            "**/*.min.js",
-            "**/package-lock.json",
-            "**/docs/**",
-        ],
-        plugins: { js, prettier: pluginPrettier, "simple-import-sort": simpleImportSort },
+        plugins: {
+            js,
+            "simple-import-sort": simpleImportSort,
+        },
         extends: ["js/recommended"],
         languageOptions: {
             globals: { ...globals.node, ...globals.es2024 },
         },
         rules: {
+            eqeqeq: ["error", "always"],
             "no-var": "error",
             "prefer-const": ["error", { destructuring: "all" }],
             "no-unused-vars": ["error", { args: "none", ignoreRestSiblings: true }],
             "no-implicit-coercion": ["warn", { allow: ["!!"] }],
-            indent: ["error", 4, { SwitchCase: 1 }],
-            semi: ["error", "always"],
-            curly: ["error", "all"],
-            "brace-style": ["error", "1tbs", { allowSingleLine: false }],
-            quotes: ["error", "double", { avoidEscape: true, allowTemplateLiterals: true }],
             "simple-import-sort/imports": [
                 "error",
                 {
@@ -126,20 +80,12 @@ export default defineConfig([
     },
     {
         files: ["**/*.json"],
-        ignores: [
-            "CHANGELOG.md",
-            "**/node_modules/**",
-            "**/*.min.js",
-            "**/package-lock.json",
-            "**/docs/**",
-        ],
         plugins: { json },
         language: "json/json",
         extends: ["json/recommended"],
     },
     {
         files: ["**/*.md"],
-        ignores: ["CHANGELOG.md", "**/node_modules/**", "**/docs/**"],
         plugins: { markdown },
         language: "markdown/gfm",
         extends: ["markdown/recommended"],
@@ -149,17 +95,8 @@ export default defineConfig([
     {
         // eslint-config-prettier turns off `curly`, but we want to strictly enforce it
         files: ["**/*.{js,mjs,cjs}"],
-        ignores: [
-            "CHANGELOG.md",
-            "**/node_modules/**",
-            "**/*.min.js",
-            "**/package-lock.json",
-            "**/docs/**",
-        ],
         rules: {
             curly: ["error", "all"],
-            "brace-style": ["error", "1tbs", { allowSingleLine: false }],
-            quotes: ["error", "double", { avoidEscape: true, allowTemplateLiterals: true }],
         },
     },
 ]);
