@@ -580,6 +580,71 @@ test("CLI resolves template and output paths from its config file", async (t) =>
     );
 });
 
+test("CLI exposes help and the executing package version without a config", async () => {
+    const manifest = JSON.parse(
+        await fs.readFile(new URL("../package.json", import.meta.url), "utf8"),
+    );
+    const help = await execFileAsync(process.execPath, [CLI_PATH, "--help"]);
+    const version = await execFileAsync(process.execPath, [CLI_PATH, "--version"]);
+
+    assert.match(help.stdout, /^Usage: squirrellyify-client/u);
+    assert.equal(help.stderr, "");
+    assert.equal(version.stdout.trim(), manifest.version);
+    assert.equal(version.stderr, "");
+});
+
+test("CLI reports usage errors without a stack and uses status 2", async () => {
+    await assert.rejects(
+        () => execFileAsync(process.execPath, [CLI_PATH]),
+        (error) => {
+            assert.equal(error.code, 2);
+            assert.match(error.stderr, /Exactly one config file is required/u);
+            assert.match(error.stderr, /Usage: squirrellyify-client/u);
+            assert.doesNotMatch(error.stderr, /\n\s+at /u);
+            return true;
+        },
+    );
+});
+
+test("CLI accepts option-looking config paths after the end-of-options marker", async (t) => {
+    const dir = await createTempDir(t);
+    const configName = "--client.config.mjs";
+    await fs.writeFile(
+        path.join(dir, configName),
+        `export default {
+            modules: {
+                card: {
+                    output: "card.js",
+                    templates: { card: "<p>{{ it.name }}</p>" }
+                }
+            }
+        };`,
+        "utf8",
+    );
+
+    const result = await execFileAsync(process.execPath, [CLI_PATH, "--", configName], {
+        cwd: dir,
+    });
+    assert.match(result.stdout, /Built card:/u);
+    assert.equal(result.stderr, "");
+    await fs.access(path.join(dir, "card.js"));
+});
+
+test("CLI hides unexpected stacks unless debug output is requested", async (t) => {
+    const dir = await createTempDir(t);
+    const configPath = path.join(dir, "broken.config.mjs");
+    await fs.writeFile(configPath, 'throw new Error("broken config");\n', "utf8");
+
+    await assert.rejects(
+        () => execFileAsync(process.execPath, [CLI_PATH, configPath]),
+        (error) => error.code === 1 && error.stderr.trim() === "broken config",
+    );
+    await assert.rejects(
+        () => execFileAsync(process.execPath, [CLI_PATH, "--debug", configPath]),
+        (error) => error.code === 1 && /\n\s+at /u.test(error.stderr),
+    );
+});
+
 test("compiles every module before replacing existing build output", async (t) => {
     const dir = await createTempDir(t);
     const output = path.join(dir, "public", "first.js");

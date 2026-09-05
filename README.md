@@ -17,6 +17,10 @@ A simple and fast plugin for using the [Squirrelly](https://squirrelly.js.org/) 
 - 🔧 **Extensible:** Easily add custom Squirrelly helpers and filters.
 - 🌐 **Client Modules:** Precompiles named partials into self-contained, CSP-friendly browser ES modules.
 
+## Node.js support
+
+This package requires Node.js 20.19.0 or newer. CI exercises the exact 20.19.0, 22.13.0, and 24.0.0 boundaries. Node.js 20 remains tested only to preserve the current major-version contract even though upstream support has ended; use Node.js 22 or 24 for supported production deployments. A newly released Node.js major is not considered supported until it is added to CI, even when the open `engines` range admits it.
+
 ## Installation
 
 You need to install `squirrelly` and `fastify` alongside this plugin.
@@ -239,6 +243,8 @@ Use check mode in CI to verify committed generated artifacts without replacing t
 ```shell
 squirrellyify-client --check build/squirrelly-client.config.mjs
 ```
+
+Use `--help` for concise usage and `--version` to identify the installed artifact. Options may be terminated with `--`, which is required for a config path beginning with `-`. Invalid usage exits with status `2`; build or config failures exit with status `1`. Diagnostics omit stack traces by default. Add `--debug` when a maintainer needs the stack for troubleshooting.
 
 The programmatic equivalent is `buildClientModules({ ...config, check: true })`. It rejects with `ERR_CLIENT_MODULES_OUT_OF_DATE` and a `stale` path list when an artifact differs or is missing.
 

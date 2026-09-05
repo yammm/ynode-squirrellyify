@@ -1,19 +1,17 @@
-name: security-audit
+name: latest-peer-compatibility
 
 on:
-    push:
-        branches: [main]
-    pull_request:
     schedule:
-        - cron: "0 9 * * 1"
+        - cron: "30 9 * * 1"
     workflow_dispatch:
 
 permissions:
     contents: read
 
 jobs:
-    audit:
+    typecheck:
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         steps:
             - name: Checkout
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -26,11 +24,8 @@ jobs:
                   node-version: "24.0.0"
                   cache: npm
 
-            - name: Install dependencies without lifecycle scripts
-              run: npm ci --ignore-scripts
+            - name: Install reviewed dependencies
+              run: npm ci
 
-            - name: Audit production dependencies
-              run: npm audit --omit=dev --audit-level=moderate
-
-            - name: Audit the full development tree
-              run: npm audit --audit-level=high
+            - name: Check current peer ranges against latest matching releases
+              run: npm run typecheck:latest

@@ -69,13 +69,18 @@
         "lint": "eslint .",
         "lint:fix": "eslint . --fix",
         "test:integration": "node --test",
-        "test:staged": "node scripts/lint-staged.mjs",
+        "test:staged": "node scripts/check-staged.mjs --lint-only",
         "typecheck": "node scripts/check-types.mjs",
-        "ver:preview": "npx autover --no-amend --dry-run --short",
-        "ver:apply": "npx autover --guard-unchanged --short",
+        "ver:preview": "npx --no-install autover --no-amend --dry-run --short",
+        "ver:apply": "npx --no-install autover --guard-unchanged --short",
         "test": "node --test && npm run docs:check",
         "prepublishOnly": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run docs",
-        "postversion": "git push && git push --tags"
+        "test:hooks": "node --test tests/check-staged.test.js tests/release.test.js",
+        "release:check": "node scripts/verify-release.mjs",
+        "release:patch": "node scripts/prepare-release.mjs patch",
+        "release:minor": "node scripts/prepare-release.mjs minor",
+        "release:major": "node scripts/prepare-release.mjs major",
+        "typecheck:latest": "node scripts/check-types.mjs --latest"
     },
     "publishConfig": {
         "access": "public"
@@ -93,5 +98,6 @@
     "peerDependencies": {
         "fastify": "5.x",
         "squirrelly": "^9.1.0"
-    }
+    },
+    "packageManager": "npm@11.17.0"
 }
