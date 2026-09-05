@@ -57,8 +57,8 @@ jobs:
                           specifiers.add(`${pkg.name}/${key.slice(2)}`);
                       }
                   }
-                  const bins = typeof pkg.bin === "string" ? [pkg.name] : Object.keys(pkg.bin ?? {});
-                  writeFileSync(`${process.env.RUNNER_TEMP}/smoke.json`, JSON.stringify({ bins, specifiers: [...specifiers] }));
+                  const bins = typeof pkg.bin === "string" ? [[pkg.name, pkg.bin]] : Object.entries(pkg.bin ?? {});
+                  writeFileSync(`${process.env.RUNNER_TEMP}/smoke.json`, JSON.stringify({ bins, packageName: pkg.name, specifiers: [...specifiers] }));
                   NODE
 
                   tarball="$(node -e 'const fs = require("node:fs"); const [pack] = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); console.log(pack.filename);' "$RUNNER_TEMP/pack.json")"
@@ -70,14 +70,15 @@ jobs:
                   node --input-type=module <<'NODE'
                   import { readFileSync } from "node:fs";
                   import { spawnSync } from "node:child_process";
+                  import path from "node:path";
 
-                  const { bins, specifiers } = JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/smoke.json`, "utf8"));
-                  const npxCommand = process.platform === "win32" ? "npx.cmd" : "npx";
+                  const { bins, packageName, specifiers } = JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/smoke.json`, "utf8"));
+                  const packageDirectory = path.join(process.cwd(), "node_modules", ...packageName.split("/"));
                   for (const specifier of specifiers) {
                       await import(specifier);
                   }
-                  for (const bin of bins) {
-                      const result = spawnSync(npxCommand, ["--no-install", bin, "--help"], {
+                  for (const [bin, entry] of bins) {
+                      const result = spawnSync(process.execPath, [path.join(packageDirectory, entry), "--help"], {
                           encoding: "utf8",
                       });
                       if (result.status !== 0) {
